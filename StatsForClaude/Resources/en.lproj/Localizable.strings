@@ -1,0 +1,57 @@
+/* Menu bar */
+"session_limit" = "Session";
+"week_limit" = "Week";
+"resets_at_time" = "resets at %@";
+"resets_in" = "Resets in %@";
+"resets_weekday_time" = " · %@ at %@";
+
+/* Popover */
+"current_project" = "Project";
+"week_cost" = "Weekly API-equivalent";
+"based_on_api_pricing" = "based on Anthropic API pricing";
+"open_dashboard" = "Open Dashboard";
+"settings" = "Settings…";
+"quit" = "Quit";
+
+/* Dashboard */
+"dashboard_title" = "Stats for Claude";
+"overview" = "Overview";
+"history" = "History";
+"no_data" = "No data yet";
+"no_data_hint" = "Start using Claude Code to see your usage statistics.";
+
+/* Cost */
+"api_equivalent" = "API-equivalent this week";
+"subscription_value" = "Subscription value";
+"value_ratio" = "%.1f× value";
+
+/* Projects table */
+"project_name" = "Project";
+"tokens" = "Tokens";
+"cost" = "Cost";
+"share" = "Share";
+
+/* History */
+"activity_last_year" = "Activity (last year)";
+"time_range_7d" = "7d";
+"time_range_30d" = "30d";
+"time_range_90d" = "90d";
+
+/* Settings */
+"settings_title" = "Settings";
+"subscription_price" = "Subscription price";
+"currency" = "Currency";
+"claude_directory" = "Claude directory";
+"browse" = "Browse…";
+"plan" = "Plan";
+"session_limit_label" = "Session limit (tokens)";
+"weekly_limit_label" = "Weekly limit (tokens)";
+"reset_to_defaults" = "Reset to plan defaults";
+
+/* Onboarding */
+"onboarding_title" = "Welcome to Stats for Claude";
+"onboarding_description" = "Stats for Claude needs access to your ~/.claude folder to read usage data. No data is sent to the internet.";
+"choose_folder" = "Choose ~/.claude folder";
+"onboarding_privacy" = "All processing happens locally on your Mac.";
+"get_started" = "Get Started";
+"error_no_bookmark" = "No folder selected. Please choose your ~/.claude folder in Settings.";
