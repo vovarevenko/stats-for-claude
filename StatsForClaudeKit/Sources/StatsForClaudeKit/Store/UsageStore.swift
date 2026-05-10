@@ -123,7 +123,9 @@ public final class UsageStore {
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    private func refreshAPIInternal() async {
+    // Test seam: tests drive this directly instead of waiting on the spawned
+    // Task to settle.
+    func refreshAPIInternal() async {
         do {
             let token = try resolveToken()
             let response = try await usageFetcher.fetchUsage(token: token)
@@ -172,7 +174,7 @@ public final class UsageStore {
         tokenCache.deleteToken()
     }
 
-    private func refreshJSONLInternal(settings: AppSettings) async {
+    func refreshJSONLInternal(settings: AppSettings) async {
         let url: URL?
         do {
             url = try bookmarkStore.resolve()

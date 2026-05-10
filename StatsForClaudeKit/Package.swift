@@ -24,5 +24,10 @@ let package = Package(
             path: "Tests/StatsForClaudeKitTests",
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(
+            name: "StatsForClaudeAppKitTests",
+            dependencies: ["StatsForClaudeAppKit", "StatsForClaudeKit"],
+            path: "Tests/StatsForClaudeAppKitTests"
+        ),
     ]
 )
