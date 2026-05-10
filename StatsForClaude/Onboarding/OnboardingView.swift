@@ -32,6 +32,7 @@ struct OnboardingView: View {
                 .font(.system(size: 64))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Color.accentColor)
+                .accessibilityHidden(true)
 
             VStack(spacing: 10) {
                 Text(String(localized: "onboarding_title"))
@@ -55,6 +56,7 @@ struct OnboardingView: View {
 
             HStack(spacing: 6) {
                 Image(systemName: "lock.fill")
+                    .accessibilityHidden(true)
                 Text(String(localized: "onboarding_privacy"))
             }
             .font(.caption)
@@ -67,6 +69,7 @@ struct OnboardingView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(.green)
+                .accessibilityHidden(true)
 
             Text(String(localized: "onboarding_success_title"))
                 .font(.title2.bold())
@@ -86,6 +89,7 @@ struct OnboardingView: View {
                 .font(.system(size: 48))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.orange)
+                .accessibilityHidden(true)
 
             Text(message)
                 .font(.callout)

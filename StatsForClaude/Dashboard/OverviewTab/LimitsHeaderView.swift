@@ -88,6 +88,7 @@ private struct LimitCard: View {
                 }
             }
             .frame(height: 6)
+            .accessibilityHidden(true)
 
             Text(resetsLabel)
                 .font(.footnote)
@@ -98,5 +99,18 @@ private struct LimitCard: View {
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(a11yLabel)
+    }
+
+    private var a11yLabel: String {
+        let pctPart: String
+        if let pct = percent {
+            pctPart = String(format: String(localized: "a11y_limit_card_with_percent"), title, pct)
+        } else {
+            pctPart = String(format: String(localized: "a11y_limit_card_no_data"), title)
+        }
+        guard timeRemaining > 0 else { return pctPart }
+        return pctPart + ". " + String(format: String(localized: "resets_in"), CountdownFormatter.format(timeRemaining))
     }
 }

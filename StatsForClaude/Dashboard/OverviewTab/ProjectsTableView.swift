@@ -159,6 +159,7 @@ private struct ValueBarCell: View {
                     .animation(.easeInOut, value: fraction)
             }
             .frame(width: Self.barWidth, height: 5)
+            .accessibilityHidden(true)
 
             Text("\(Int(percent.rounded()))%")
                 .font(.caption.monospacedDigit())
@@ -172,6 +173,8 @@ private struct ValueBarCell: View {
                 .frame(width: Self.valueWidth, alignment: .trailing)
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(format: String(localized: "a11y_value_bar_cell"), text, Int(percent.rounded())))
     }
 }
 

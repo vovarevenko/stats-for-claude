@@ -38,6 +38,7 @@ struct MenuBarPopoverView: View {
                           ? "exclamationmark.triangle.fill"
                           : "clock.arrow.circlepath")
                         .foregroundStyle(isStale ? .orange : .secondary)
+                        .accessibilityHidden(true)
                     Text(stalenessLabel)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -45,6 +46,7 @@ struct MenuBarPopoverView: View {
                 .font(.caption)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
+                .accessibilityElement(children: .combine)
             }
 
             MenuRow(label: String(localized: "menu_dashboard")) {
@@ -141,6 +143,7 @@ private struct UsageRow: View {
                 }
             }
             .frame(height: 5)
+            .accessibilityHidden(true)
 
             Text(resetsLabel)
                 .font(.caption)
@@ -148,6 +151,15 @@ private struct UsageRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(a11yLabel)
+    }
+
+    private var a11yLabel: String {
+        let pct = Int((fraction * 100).rounded())
+        let base = String(format: String(localized: "a11y_limit_card_with_percent"), label, pct)
+        guard timeRemaining > 0 else { return base }
+        return base + ". " + String(format: String(localized: "resets_in"), CountdownFormatter.format(timeRemaining))
     }
 }
 
