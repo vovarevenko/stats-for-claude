@@ -49,9 +49,7 @@ struct ProjectsTableView: View {
             Text(String(localized: "projects_this_month"))
                 .font(.headline)
 
-            (Text(String(localized: "cost")).bold()
-                + Text(" — ")
-                + Text(String(localized: "cost_explanation")))
+            Text("**\(String(localized: "cost"))** — \(String(localized: "cost_explanation"))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 4)
@@ -113,7 +111,7 @@ struct ProjectsTableView: View {
         }
         let prefix = String(path[..<path.index(after: slashIndex)])
         let leaf = String(path[path.index(after: slashIndex)...])
-        return Text(prefix).foregroundStyle(.tertiary) + Text(leaf)
+        return Text("\(Text(prefix).foregroundStyle(.tertiary))\(leaf)")
     }
 
     private func formatMoney(_ value: Double) -> String {
