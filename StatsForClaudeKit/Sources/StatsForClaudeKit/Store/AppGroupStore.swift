@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let log = Log.make("AppGroupStore")
 
 /// Shared UserDefaults bridge between the main app and the Widget Extension.
 ///
@@ -24,30 +27,41 @@ public final class AppGroupStore: @unchecked Sendable {
     // MARK: – Widget snapshot
 
     public func save(_ snapshot: WidgetSnapshot) {
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        defaults?.set(data, forKey: snapshotKey)
+        do {
+            defaults?.set(try JSONEncoder().encode(snapshot), forKey: snapshotKey)
+        } catch {
+            log.error("WidgetSnapshot encode failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     // MARK: – Cached API response (survives token expiry)
 
     public func save(_ response: UsageAPIResponse, fetchedAt: Date = .now) {
         let envelope = CachedAPIResponse(response: response, fetchedAt: fetchedAt)
-        guard let data = try? JSONEncoder().encode(envelope) else { return }
-        defaults?.set(data, forKey: apiCacheKey)
+        do {
+            defaults?.set(try JSONEncoder().encode(envelope), forKey: apiCacheKey)
+        } catch {
+            log.error("CachedAPIResponse encode failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     public func loadCachedAPIResponse() -> CachedAPIResponse? {
-        guard
-            let data = defaults?.data(forKey: apiCacheKey),
-            let cached = try? JSONDecoder().decode(CachedAPIResponse.self, from: data)
-        else { return nil }
-        return cached
+        guard let data = defaults?.data(forKey: apiCacheKey) else { return nil }
+        do {
+            return try JSONDecoder().decode(CachedAPIResponse.self, from: data)
+        } catch {
+            log.error("CachedAPIResponse decode failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
     }
 
     // MARK: – Settings (subset needed by widget)
 
     public func save(_ settings: AppSettings) {
-        guard let data = try? JSONEncoder().encode(settings) else { return }
-        defaults?.set(data, forKey: settingsKey)
+        do {
+            defaults?.set(try JSONEncoder().encode(settings), forKey: settingsKey)
+        } catch {
+            log.error("AppSettings encode failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

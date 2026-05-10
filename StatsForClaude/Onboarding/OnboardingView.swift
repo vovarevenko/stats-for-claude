@@ -1,5 +1,8 @@
 import SwiftUI
+import OSLog
 import StatsForClaudeKit
+
+private let log = Log.make("Onboarding")
 
 struct OnboardingView: View {
     @Environment(MenuBarViewModel.self) private var vm
@@ -117,6 +120,7 @@ struct OnboardingView: View {
             vm.store.refresh(settings: vm.settings)
             withAnimation(.easeInOut) { phase = .success }
         } catch {
+            log.error("Onboarding bookmark save failed: \(error.localizedDescription, privacy: .public)")
             withAnimation(.easeInOut) { phase = .failed(error.localizedDescription) }
         }
     }

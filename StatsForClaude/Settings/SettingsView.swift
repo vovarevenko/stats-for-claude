@@ -1,5 +1,8 @@
 import SwiftUI
+import OSLog
 import StatsForClaudeKit
+
+private let log = Log.make("SettingsView")
 
 struct SettingsView: View {
     @Environment(MenuBarViewModel.self) private var vm
@@ -132,7 +135,7 @@ struct SettingsView: View {
             claudeDirectoryPath = url.path
             vm.store.refresh(settings: vm.settings)
         } catch {
-            // Silently ignore — path shown in field won't update
+            log.error("Saving bookmark failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

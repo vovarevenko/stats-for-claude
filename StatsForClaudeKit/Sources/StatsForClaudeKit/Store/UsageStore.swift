@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import OSLog
+
+private let log = Log.make("UsageStore")
 
 @Observable
 @MainActor
@@ -128,9 +131,15 @@ public final class UsageStore {
             apiDataAge  = 0
             appGroupStore.save(response)
         } catch let error as APIError {
-            if case .httpError(401) = error { invalidateToken() }
+            if case .httpError(401) = error {
+                log.info("API returned 401; invalidating cached token")
+                invalidateToken()
+            } else {
+                log.error("API refresh failed: \(error.localizedDescription, privacy: .public)")
+            }
             loadCachedResponseIfNeeded()
         } catch {
+            log.error("API refresh failed: \(error.localizedDescription, privacy: .public)")
             loadCachedResponseIfNeeded()
         }
     }
@@ -164,16 +173,31 @@ public final class UsageStore {
     }
 
     private func refreshJSONLInternal(settings: AppSettings) async {
-        guard let url = (try? bookmarkStore.resolve()) ?? nil else { return }
+        let url: URL?
+        do {
+            url = try bookmarkStore.resolve()
+        } catch {
+            log.error("Bookmark resolve failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        guard let url else { return }
         await loadJSONL(from: url, securityScoped: true, settings: settings)
     }
 
     private func loadJSONL(from url: URL, securityScoped: Bool, settings: AppSettings) async {
         let started = securityScoped && url.startAccessingSecurityScopedResource()
         defer { if started { url.stopAccessingSecurityScopedResource() } }
-        let sessions = (try? await Task.detached(priority: .background) {
-            try JSONLParser().parseAllSessions(in: url)
-        }.value) ?? []
+
+        let sessions: [SessionRecord]
+        do {
+            sessions = try await Task.detached(priority: .background) {
+                try JSONLParser().parseAllSessions(in: url)
+            }.value
+        } catch {
+            log.error("JSONL parse failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+
         let calc = CostCalculator()
         weeklyUsage = LimitCalculator.weeklyUsage(from: sessions, calculator: calc)
         monthlyUsage = LimitCalculator.monthlyUsage(from: sessions, calculator: calc)
