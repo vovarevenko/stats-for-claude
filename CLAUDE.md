@@ -452,7 +452,8 @@ they don't get lost. None blocks day-to-day development.
 - [ ] Mac App Distribution certificate issued.
 - [ ] App Store Connect app record created (name, bundle ID, SKU,
       primary language).
-- [ ] Privacy Policy hosted on GitHub Pages; URL set in App Store Connect.
+- [ ] GitHub Pages enabled (Settings → Pages, source `main /docs`).
+- [ ] Privacy Policy URL set in App Store Connect (once Pages live).
 - [ ] First archive uploaded; Export Compliance answered.
 - [ ] TestFlight build distributed to internal testers (and external if
       needed, after Beta App Review).
