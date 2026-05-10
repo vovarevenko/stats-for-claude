@@ -17,7 +17,11 @@ final class MenuBarViewModel {
     /// (which lives in a different scene) can request a specific tab when opening it.
     var selectedTab: DashboardTab = .overview
 
-    private var refreshTask: Task<Void, Never>?
+    private static let apiRefreshInterval: Duration = .seconds(60)
+    private static let jsonlRefreshInterval: Duration = .seconds(300)
+
+    private var apiTimer: Task<Void, Never>?
+    private var jsonlTimer: Task<Void, Never>?
 
     init(
         store: UsageStore = UsageStore(),
@@ -45,13 +49,18 @@ final class MenuBarViewModel {
     // MARK: – Lifecycle
 
     func start() {
-        guard refreshTask == nil else { return }
-        refreshTask = Task {
-            store.refresh(settings: settings)
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
-                guard !Task.isCancelled else { break }
-                store.refresh(settings: settings)
+        guard apiTimer == nil else { return }
+        store.refresh(settings: settings)
+        apiTimer = Task { [weak self] in
+            await Self.tick(every: Self.apiRefreshInterval) {
+                guard let self else { return }
+                self.store.refreshAPI(settings: self.settings)
+            }
+        }
+        jsonlTimer = Task { [weak self] in
+            await Self.tick(every: Self.jsonlRefreshInterval) {
+                guard let self else { return }
+                self.store.refreshJSONL(settings: self.settings)
             }
         }
     }
@@ -60,5 +69,13 @@ final class MenuBarViewModel {
         settings = new
         SettingsStore.save(new)
         store.refresh(settings: new)
+    }
+
+    private static func tick(every interval: Duration, _ action: @MainActor () -> Void) async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: interval)
+            guard !Task.isCancelled else { break }
+            await MainActor.run(body: action)
+        }
     }
 }

@@ -13,7 +13,12 @@ public final class UsageStore {
     public private(set) var weeklyUsage: WeeklyUsage = .empty
     public private(set) var monthlyUsage: WeeklyUsage = .empty
 
-    public private(set) var isLoading = false
+    /// True while either the API or the JSONL refresh is in flight. The two
+    /// pipelines run on independent cadences so they need separate flags;
+    /// `isLoading` is the OR projection used by the UI for a single spinner.
+    public var isLoading: Bool { apiInFlight || jsonlInFlight }
+    private var apiInFlight = false
+    private var jsonlInFlight = false
 
     private let appGroupStore: AppGroupStore
     private let bookmarkStore: BookmarkResolving
@@ -67,33 +72,55 @@ public final class UsageStore {
 
     // ── Public entry points ───────────────────────────────────────────────────
 
-    /// Full refresh: API + JSONL from stored bookmark.
+    /// Refresh both pipelines in sequence. Used on launch and on settings change;
+    /// the steady-state schedule calls `refreshAPI` and `refreshJSONL` independently
+    /// at their own cadences.
     public func refresh(settings: AppSettings) {
-        guard !isLoading else { return }
-        isLoading = true
+        refreshAPI(settings: settings)
+        refreshJSONL(settings: settings)
+    }
+
+    /// Pull the latest %% from `/oauth/usage`. Cheap (one HTTP request) and called
+    /// often.
+    public func refreshAPI(settings: AppSettings) {
+        guard !apiInFlight else { return }
+        apiInFlight = true
         Task {
-            await refreshAPI()
-            await refreshJSONL(settings: settings)
-            isLoading = false
+            await refreshAPIInternal()
+            apiInFlight = false
+            publishSnapshot(settings: settings)
+        }
+    }
+
+    /// Reparse `~/.claude/projects/`. Heavier (file enumeration + per-line
+    /// JSONDecoder work) and called less often.
+    public func refreshJSONL(settings: AppSettings) {
+        guard !jsonlInFlight else { return }
+        jsonlInFlight = true
+        Task {
+            await refreshJSONLInternal(settings: settings)
+            jsonlInFlight = false
             publishSnapshot(settings: settings)
         }
     }
 
     /// Used during onboarding when we have a URL but no bookmark yet.
     public func refresh(claudeURL: URL, settings: AppSettings) {
-        guard !isLoading else { return }
-        isLoading = true
+        guard !apiInFlight && !jsonlInFlight else { return }
+        apiInFlight = true
+        jsonlInFlight = true
         Task {
-            await refreshAPI()
+            await refreshAPIInternal()
             await loadJSONL(from: claudeURL, securityScoped: false, settings: settings)
-            isLoading = false
+            apiInFlight = false
+            jsonlInFlight = false
             publishSnapshot(settings: settings)
         }
     }
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    private func refreshAPI() async {
+    private func refreshAPIInternal() async {
         do {
             let token = try resolveToken()
             let response = try await usageFetcher.fetchUsage(token: token)
@@ -136,7 +163,7 @@ public final class UsageStore {
         tokenCache.deleteToken()
     }
 
-    private func refreshJSONL(settings: AppSettings) async {
+    private func refreshJSONLInternal(settings: AppSettings) async {
         guard let url = (try? bookmarkStore.resolve()) ?? nil else { return }
         await loadJSONL(from: url, securityScoped: true, settings: settings)
     }
