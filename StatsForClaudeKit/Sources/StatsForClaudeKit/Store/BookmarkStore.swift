@@ -1,7 +1,16 @@
 import Foundation
 
+public protocol BookmarkResolving: Sendable {
+    var hasBookmark: Bool { get }
+    func resolve() throws -> URL?
+    func save(url: URL) throws
+}
+
 /// Persists and resolves a security-scoped bookmark for the ~/.claude directory.
-public final class BookmarkStore: @unchecked Sendable {
+///
+/// `@unchecked Sendable` is sound: `UserDefaults` is documented as thread-safe
+/// and the bookmark key is immutable.
+public final class BookmarkStore: BookmarkResolving, @unchecked Sendable {
     private let defaults: UserDefaults
     private let key = "claudeDirectoryBookmark"
 

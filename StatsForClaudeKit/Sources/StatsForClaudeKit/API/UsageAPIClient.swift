@@ -1,5 +1,11 @@
 import Foundation
 
+public protocol UsageFetching: Sendable {
+    func fetchUsage(token: String) async throws -> UsageAPIResponse
+}
+
+extension UsageAPIClient: UsageFetching {}
+
 public struct UsageAPIClient: Sendable {
     public static let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 

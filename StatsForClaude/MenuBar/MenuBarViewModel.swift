@@ -11,6 +11,7 @@ enum DashboardTab: Int, Hashable, CaseIterable {
 final class MenuBarViewModel {
     let store: UsageStore
     private(set) var settings: AppSettings
+    private let bookmarkStore: BookmarkResolving
 
     /// Currently selected tab in the Dashboard window. Mutable so the menu bar popover
     /// (which lives in a different scene) can request a specific tab when opening it.
@@ -18,9 +19,14 @@ final class MenuBarViewModel {
 
     private var refreshTask: Task<Void, Never>?
 
-    init(store: UsageStore = UsageStore(), settings: AppSettings = SettingsStore.load()) {
+    init(
+        store: UsageStore = UsageStore(),
+        settings: AppSettings = SettingsStore.load(),
+        bookmarkStore: BookmarkResolving = BookmarkStore()
+    ) {
         self.store = store
         self.settings = settings
+        self.bookmarkStore = bookmarkStore
     }
 
     // MARK: – Menu bar label
@@ -33,7 +39,7 @@ final class MenuBarViewModel {
     }
 
     var needsOnboarding: Bool {
-        !BookmarkStore().hasBookmark
+        !bookmarkStore.hasBookmark
     }
 
     // MARK: – Lifecycle

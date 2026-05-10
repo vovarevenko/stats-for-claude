@@ -16,7 +16,9 @@ public final class UsageStore {
     public private(set) var isLoading = false
 
     private let appGroupStore: AppGroupStore
-    private let bookmarkStore: BookmarkStore
+    private let bookmarkStore: BookmarkResolving
+    private let usageFetcher: UsageFetching
+    private let keychain: KeychainTokenReading
 
     // Token is cached in-memory AND in UserDefaults so the Keychain prompt
     // fires only once across app launches (not on every startup).
@@ -25,11 +27,17 @@ public final class UsageStore {
 
     public init(
         appGroupStore: AppGroupStore = .shared,
-        bookmarkStore: BookmarkStore = BookmarkStore()
+        bookmarkStore: BookmarkResolving = BookmarkStore(),
+        usageFetcher: UsageFetching = UsageAPIClient(),
+        keychain: KeychainTokenReading = KeychainStore()
     ) {
         self.appGroupStore = appGroupStore
         self.bookmarkStore = bookmarkStore
+        self.usageFetcher = usageFetcher
+        self.keychain = keychain
     }
+
+    public var hasBookmark: Bool { bookmarkStore.hasBookmark }
 
     // ── Derived convenience ───────────────────────────────────────────────────
 
@@ -80,7 +88,7 @@ public final class UsageStore {
     private func refreshAPI() async {
         do {
             let token = try resolveToken()
-            let response = try await UsageAPIClient().fetchUsage(token: token)
+            let response = try await usageFetcher.fetchUsage(token: token)
             apiResponse = response
             apiDataAge  = 0
             appGroupStore.save(response)
@@ -107,7 +115,7 @@ public final class UsageStore {
             return t
         }
         // 3. Read from Keychain — shows system prompt once, then persists above
-        let t = try KeychainStore().readClaudeToken()
+        let t = try keychain.readClaudeToken()
         cachedToken = t
         UserDefaults.standard.set(t, forKey: Self.tokenDefaultsKey)
         return t

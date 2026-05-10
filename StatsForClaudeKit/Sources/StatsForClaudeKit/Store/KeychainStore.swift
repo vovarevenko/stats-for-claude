@@ -1,9 +1,16 @@
 import Foundation
 import Security
 
+public protocol KeychainTokenReading: Sendable {
+    func readClaudeToken() throws -> String
+}
+
 /// Reads Claude Code OAuth credentials from the macOS Keychain.
 /// On first access macOS will prompt the user to allow access.
-public final class KeychainStore: @unchecked Sendable {
+///
+/// `@unchecked Sendable` is sound: Security framework `SecItemCopyMatching`
+/// is documented as thread-safe and `service` is immutable.
+public final class KeychainStore: KeychainTokenReading, @unchecked Sendable {
     private let service: String
 
     public init(service: String = "Claude Code-credentials") {
