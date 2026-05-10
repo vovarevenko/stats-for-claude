@@ -445,8 +445,6 @@ These are **out of scope** for the current refactor and tracked here so
 they don't get lost. None blocks day-to-day development.
 
 - [ ] Make GitHub repo public.
-- [ ] `README.md` — what it is, screenshots in `docs/screenshots/`,
-      requirements (macOS 26+), dev setup, architecture diagram.
 - [ ] Apple Developer Program enrollment ($99/year).
 - [ ] App Store Connect: Paid Applications Agreement, tax (W-8BEN as
       non-US individual), banking.
