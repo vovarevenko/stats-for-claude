@@ -2,20 +2,25 @@ import Foundation
 import Observation
 import StatsForClaudeKit
 
-enum DashboardTab: Int, Hashable, CaseIterable {
+public enum DashboardTab: Int, Hashable, CaseIterable, Sendable {
     case overview, history, settings
 }
 
+/// Owns the per-launch app state: which tab is open, what `AppSettings` are
+/// in effect, and the two refresh timers. Lives in `StatsForClaudeAppKit` so
+/// `swift test` can construct it with fake stores; the SwiftUI views in the
+/// app target depend on this module.
 @Observable
 @MainActor
-final class MenuBarViewModel {
-    let store: UsageStore
-    private(set) var settings: AppSettings
+public final class MenuBarViewModel {
+    public let store: UsageStore
+    public private(set) var settings: AppSettings
     private let bookmarkStore: BookmarkResolving
+    private let settingsPersistence: SettingsPersisting
 
     /// Currently selected tab in the Dashboard window. Mutable so the menu bar popover
     /// (which lives in a different scene) can request a specific tab when opening it.
-    var selectedTab: DashboardTab = .overview
+    public var selectedTab: DashboardTab = .overview
 
     private static let apiRefreshInterval: Duration = .seconds(60)
     private static let jsonlRefreshInterval: Duration = .seconds(300)
@@ -23,32 +28,34 @@ final class MenuBarViewModel {
     private var apiTimer: Task<Void, Never>?
     private var jsonlTimer: Task<Void, Never>?
 
-    init(
+    public init(
         store: UsageStore = UsageStore(),
-        settings: AppSettings = SettingsStore.load(),
-        bookmarkStore: BookmarkResolving = BookmarkStore()
+        settings: AppSettings? = nil,
+        bookmarkStore: BookmarkResolving = BookmarkStore(),
+        settingsPersistence: SettingsPersisting = SettingsStore()
     ) {
         self.store = store
-        self.settings = settings
         self.bookmarkStore = bookmarkStore
+        self.settingsPersistence = settingsPersistence
+        self.settings = settings ?? settingsPersistence.load()
     }
 
     // MARK: – Menu bar label
 
-    var menuBarTitle: String {
+    public var menuBarTitle: String {
         guard store.apiResponse != nil else { return "Claude…" }
         let sp = Int((store.sessionPercent * 100).rounded())
         let wp = Int((store.weekPercent * 100).rounded())
         return "\(sp)% · \(wp)%"
     }
 
-    var needsOnboarding: Bool {
+    public var needsOnboarding: Bool {
         !bookmarkStore.hasBookmark
     }
 
     // MARK: – Lifecycle
 
-    func start() {
+    public func start() {
         guard apiTimer == nil else { return }
         store.refresh(settings: settings)
         apiTimer = Task { [weak self] in
@@ -65,9 +72,9 @@ final class MenuBarViewModel {
         }
     }
 
-    func updateSettings(_ new: AppSettings) {
+    public func updateSettings(_ new: AppSettings) {
         settings = new
-        SettingsStore.save(new)
+        settingsPersistence.save(new)
         store.refresh(settings: new)
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import StatsForClaudeKit
+import StatsForClaudeAppKit
 
 struct DashboardView: View {
     @Environment(MenuBarViewModel.self) private var vm

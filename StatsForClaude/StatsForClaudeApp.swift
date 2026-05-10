@@ -1,5 +1,6 @@
 import SwiftUI
 import StatsForClaudeKit
+import StatsForClaudeAppKit
 
 @main
 struct StatsForClaudeApp: App {

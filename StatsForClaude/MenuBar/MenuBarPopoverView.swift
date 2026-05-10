@@ -1,5 +1,6 @@
 import SwiftUI
 import StatsForClaudeKit
+import StatsForClaudeAppKit
 
 struct MenuBarPopoverView: View {
     /// Don't bother showing the "Updated Xm ago" line if the data is fresher
