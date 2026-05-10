@@ -5,8 +5,8 @@ public enum CountdownFormatter {
     public static func format(_ interval: TimeInterval) -> String {
         guard interval > 0 else { return "—" }
         let total = Int(interval)
-        let days    = total / 86400
-        let hours   = (total % 86400) / 3600
+        let days = total / 86400
+        let hours = (total % 86400) / 3600
         let minutes = (total % 3600) / 60
         if days > 0 {
             return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"

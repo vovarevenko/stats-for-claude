@@ -1,7 +1,7 @@
-import SwiftUI
 import OSLog
-import StatsForClaudeKit
 import StatsForClaudeAppKit
+import StatsForClaudeKit
+import SwiftUI
 
 private let log = Log.make("SettingsView")
 
@@ -10,7 +10,7 @@ struct SettingsView: View {
 
     // Local draft — synced to vm on every change
     @State private var draft: AppSettings = .default
-    @State private var claudeDirectoryPath: String = ""
+    @State private var claudeDirectoryPath = ""
 
     var body: some View {
         Form {
@@ -21,7 +21,7 @@ struct SettingsView: View {
                         TextField(
                             "",
                             value: $draft.subscriptionPriceUSD,
-                            format: .number.precision(.fractionLength(0...2))
+                            format: .number.precision(.fractionLength(0 ... 2))
                         )
                         .frame(width: 72)
                         .multilineTextAlignment(.trailing)

@@ -4,7 +4,6 @@ import Testing
 
 @Suite("ProjectPathDecoder")
 struct ProjectPathDecoderTests {
-
     // MARK: – decodedPath
 
     @Test("decodes simple encoded paths", arguments: [

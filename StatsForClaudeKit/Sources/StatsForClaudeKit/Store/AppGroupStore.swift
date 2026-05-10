@@ -16,9 +16,9 @@ public final class AppGroupStore: @unchecked Sendable {
     public static let appGroupID = "4DDDLR4X3X.group.org.revenko.stats-for-claude"
 
     private let defaults: UserDefaults?
-    private let snapshotKey   = "widgetSnapshot"
-    private let settingsKey   = "appSettings"
-    private let apiCacheKey   = "cachedAPIResponse"
+    private let snapshotKey = "widgetSnapshot"
+    private let settingsKey = "appSettings"
+    private let apiCacheKey = "cachedAPIResponse"
 
     public init(groupID: String = AppGroupStore.appGroupID) {
         defaults = UserDefaults(suiteName: groupID)
@@ -28,7 +28,7 @@ public final class AppGroupStore: @unchecked Sendable {
 
     public func save(_ snapshot: WidgetSnapshot) {
         do {
-            defaults?.set(try JSONEncoder().encode(snapshot), forKey: snapshotKey)
+            try defaults?.set(JSONEncoder().encode(snapshot), forKey: snapshotKey)
         } catch {
             log.error("WidgetSnapshot encode failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -39,7 +39,7 @@ public final class AppGroupStore: @unchecked Sendable {
     public func save(_ response: UsageAPIResponse, fetchedAt: Date = .now) {
         let envelope = CachedAPIResponse(response: response, fetchedAt: fetchedAt)
         do {
-            defaults?.set(try JSONEncoder().encode(envelope), forKey: apiCacheKey)
+            try defaults?.set(JSONEncoder().encode(envelope), forKey: apiCacheKey)
         } catch {
             log.error("CachedAPIResponse encode failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -59,7 +59,7 @@ public final class AppGroupStore: @unchecked Sendable {
 
     public func save(_ settings: AppSettings) {
         do {
-            defaults?.set(try JSONEncoder().encode(settings), forKey: settingsKey)
+            try defaults?.set(JSONEncoder().encode(settings), forKey: settingsKey)
         } catch {
             log.error("AppSettings encode failed: \(error.localizedDescription, privacy: .public)")
         }

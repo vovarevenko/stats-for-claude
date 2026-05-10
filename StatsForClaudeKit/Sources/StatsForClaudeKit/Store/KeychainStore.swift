@@ -19,10 +19,10 @@ public final class KeychainStore: KeychainTokenReading, @unchecked Sendable {
 
     public func readClaudeToken() throws -> String {
         let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
+            kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecReturnData as String:  true,
-            kSecMatchLimit as String:  kSecMatchLimitOne
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
 
         var item: AnyObject?
@@ -33,7 +33,7 @@ public final class KeychainStore: KeychainTokenReading, @unchecked Sendable {
         }
 
         guard
-            let json  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let oauth = json["claudeAiOauth"] as? [String: Any],
             let token = oauth["accessToken"] as? String
         else {

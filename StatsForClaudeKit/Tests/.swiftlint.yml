@@ -1,0 +1,16 @@
+# Test-folder overrides — relax rules that fight with fixture strings and
+# scaffolding code that production lint doesn't have to deal with.
+parent_config: ../../.swiftlint.yml
+
+disabled_rules:
+  # Multi-line JSON fixtures legitimately need .data(using:); rewriting them
+  # through Data(_.utf8) breaks the """raw""" delimiter idiom.
+  - non_optional_string_data_conversion
+  # Inline JSON fixtures routinely run past 160 chars; wrapping them obscures
+  # the shape we're testing against.
+  - line_length
+  # Decoding a fixed test fixture is the textbook case for try!.
+  - force_try
+  # Test stub class for URLProtocol uses `class func` to satisfy the
+  # NSObject inheritance contract; can't migrate to `static`.
+  - static_over_final_class

@@ -16,7 +16,11 @@ public struct CachedAPIResponse: Codable, Sendable {
     public static let staleAfter: TimeInterval = 3600
 
     /// Time since last successful API fetch.
-    public var age: TimeInterval { Date().timeIntervalSince(fetchedAt) }
+    public var age: TimeInterval {
+        Date().timeIntervalSince(fetchedAt)
+    }
 
-    public var isStale: Bool { age > Self.staleAfter }
+    public var isStale: Bool {
+        age > Self.staleAfter
+    }
 }

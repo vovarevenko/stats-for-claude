@@ -1,10 +1,10 @@
 import Foundation
-@testable import StatsForClaudeKit
 @testable import StatsForClaudeAppKit
+@testable import StatsForClaudeKit
 
 struct FakeFetcher: UsageFetching {
     let result: Result<UsageAPIResponse, Error>
-    func fetchUsage(token: String) async throws -> UsageAPIResponse {
+    func fetchUsage(token _: String) async throws -> UsageAPIResponse {
         try result.get()
     }
 }
@@ -19,9 +19,17 @@ struct FakeKeychain: KeychainTokenReading {
 
 final class FakeBookmarkStore: BookmarkResolving, @unchecked Sendable {
     var stored: URL?
-    var hasBookmark: Bool { stored != nil }
-    func resolve() throws -> URL? { stored }
-    func save(url: URL) throws { stored = url }
+    var hasBookmark: Bool {
+        stored != nil
+    }
+
+    func resolve() throws -> URL? {
+        stored
+    }
+
+    func save(url: URL) throws {
+        stored = url
+    }
 }
 
 final class FakeTokenCache: TokenCacheStoring, @unchecked Sendable {
@@ -29,8 +37,14 @@ final class FakeTokenCache: TokenCacheStoring, @unchecked Sendable {
     private var _stored: String?
     private(set) var deleteCount = 0
 
-    func readToken() -> String? { lock.withLock { _stored } }
-    func writeToken(_ token: String) { lock.withLock { _stored = token } }
+    func readToken() -> String? {
+        lock.withLock { _stored }
+    }
+
+    func writeToken(_ token: String) {
+        lock.withLock { _stored = token }
+    }
+
     func deleteToken() {
         lock.withLock {
             _stored = nil
@@ -45,10 +59,13 @@ final class FakeSettingsPersistence: SettingsPersisting, @unchecked Sendable {
     private(set) var saveCount = 0
 
     init(initial: AppSettings = .default) {
-        self._stored = initial
+        _stored = initial
     }
 
-    func load() -> AppSettings { lock.withLock { _stored } }
+    func load() -> AppSettings {
+        lock.withLock { _stored }
+    }
+
     func save(_ settings: AppSettings) {
         lock.withLock {
             _stored = settings

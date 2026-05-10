@@ -4,7 +4,6 @@ import Testing
 
 @Suite("Pricing")
 struct PricingTests {
-
     @Test("opus rate sheet")
     func opusRates() {
         let p = Pricing.opus

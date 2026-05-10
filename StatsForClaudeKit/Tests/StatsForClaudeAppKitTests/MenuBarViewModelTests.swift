@@ -1,12 +1,11 @@
-import Testing
 import Foundation
-@testable import StatsForClaudeKit
+import Testing
 @testable import StatsForClaudeAppKit
+@testable import StatsForClaudeKit
 
 @MainActor
 @Suite("MenuBarViewModel")
 struct MenuBarViewModelTests {
-
     private func makeStore(
         fetcher: UsageFetching,
         bookmark: FakeBookmarkStore = FakeBookmarkStore(),
@@ -24,7 +23,7 @@ struct MenuBarViewModelTests {
     }
 
     @Test("menuBarTitle is placeholder until first API response")
-    func placeholderTitle() async {
+    func placeholderTitle() {
         let (store, suite) = makeStore(
             fetcher: FakeFetcher(result: .failure(APIError.tokenNotFound))
         )
@@ -60,7 +59,7 @@ struct MenuBarViewModelTests {
     }
 
     @Test("needsOnboarding tracks the bookmark store")
-    func onboardingFlag() async {
+    func onboardingFlag() {
         let (store, suite) = makeStore(
             fetcher: FakeFetcher(result: .failure(APIError.tokenNotFound))
         )
@@ -80,7 +79,7 @@ struct MenuBarViewModelTests {
     }
 
     @Test("updateSettings persists through SettingsPersisting and updates state")
-    func updateSettingsPersists() async {
+    func updateSettingsPersists() {
         let (store, suite) = makeStore(
             fetcher: FakeFetcher(result: .failure(APIError.tokenNotFound))
         )

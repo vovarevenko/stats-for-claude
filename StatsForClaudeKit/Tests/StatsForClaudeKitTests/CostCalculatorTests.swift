@@ -48,7 +48,7 @@ struct CostCalculatorTests {
 
     // MARK: – Cost calculation
 
-    struct CostCase: Sendable {
+    struct CostCase {
         let label: String
         let model: String
         let input: Int
@@ -60,15 +60,63 @@ struct CostCalculatorTests {
 
     @Test("per-message cost", arguments: [
         // Sonnet: $3/M input, $15/M output
-        CostCase(label: "sonnet input only",  model: "claude-sonnet-4-6",        input: 1_000_000, output: 0,          cacheWrite: 0,          cacheRead: 0,          expected: 3.0),
-        CostCase(label: "sonnet output only", model: "claude-sonnet-4-6",        input: 0,          output: 1_000_000, cacheWrite: 0,          cacheRead: 0,          expected: 15.0),
+        CostCase(
+            label: "sonnet input only",
+            model: "claude-sonnet-4-6",
+            input: 1_000_000,
+            output: 0,
+            cacheWrite: 0,
+            cacheRead: 0,
+            expected: 3.0
+        ),
+        CostCase(
+            label: "sonnet output only",
+            model: "claude-sonnet-4-6",
+            input: 0,
+            output: 1_000_000,
+            cacheWrite: 0,
+            cacheRead: 0,
+            expected: 15.0
+        ),
         // Opus: $15/M input, $75/M output → 100k+100k = $1.50 + $7.50
-        CostCase(label: "opus in+out",        model: "claude-opus-4-7",          input: 100_000,    output: 100_000,   cacheWrite: 0,          cacheRead: 0,          expected: 9.0),
+        CostCase(
+            label: "opus in+out",
+            model: "claude-opus-4-7",
+            input: 100_000,
+            output: 100_000,
+            cacheWrite: 0,
+            cacheRead: 0,
+            expected: 9.0
+        ),
         // Haiku cache_read $0.08/M
-        CostCase(label: "haiku cache read",   model: "claude-haiku-4-5-20251001", input: 0,          output: 0,         cacheWrite: 0,          cacheRead: 1_000_000, expected: 0.08),
+        CostCase(
+            label: "haiku cache read",
+            model: "claude-haiku-4-5-20251001",
+            input: 0,
+            output: 0,
+            cacheWrite: 0,
+            cacheRead: 1_000_000,
+            expected: 0.08
+        ),
         // Sonnet all token types: $3 + $15 + $3.75 + $0.30
-        CostCase(label: "sonnet all types",   model: "claude-sonnet-4-6",        input: 1_000_000, output: 1_000_000, cacheWrite: 1_000_000, cacheRead: 1_000_000, expected: 22.05),
-        CostCase(label: "zero tokens",        model: "claude-sonnet-4-6",        input: 0,          output: 0,         cacheWrite: 0,          cacheRead: 0,          expected: 0.0),
+        CostCase(
+            label: "sonnet all types",
+            model: "claude-sonnet-4-6",
+            input: 1_000_000,
+            output: 1_000_000,
+            cacheWrite: 1_000_000,
+            cacheRead: 1_000_000,
+            expected: 22.05
+        ),
+        CostCase(
+            label: "zero tokens",
+            model: "claude-sonnet-4-6",
+            input: 0,
+            output: 0,
+            cacheWrite: 0,
+            cacheRead: 0,
+            expected: 0.0
+        ),
     ])
     func messageCost(testCase: CostCase) {
         let msg = message(
@@ -88,8 +136,8 @@ struct CostCalculatorTests {
             encodedProjectPath: "-Users-test",
             projectName: "test",
             messages: [
-                message(model: "claude-sonnet-4-6", input: 1_000_000, output: 0),         // $3.00
-                message(model: "claude-sonnet-4-6", input: 0,         output: 1_000_000), // $15.00
+                message(model: "claude-sonnet-4-6", input: 1_000_000, output: 0), // $3.00
+                message(model: "claude-sonnet-4-6", input: 0, output: 1_000_000), // $15.00
             ]
         )
         #expect(abs(calc.costUSD(for: session) - 18.0) < 0.0001)
@@ -105,7 +153,7 @@ struct CostCalculatorTests {
     @Test("unknown model is priced like sonnet")
     func unknownModelPricedAsSonnet() {
         let unknown = message(model: "claude-mystery", input: 1_000_000, output: 1_000_000)
-        let sonnet  = message(model: "claude-sonnet-4-6", input: 1_000_000, output: 1_000_000)
+        let sonnet = message(model: "claude-sonnet-4-6", input: 1_000_000, output: 1_000_000)
         #expect(abs(calc.costUSD(for: unknown) - calc.costUSD(for: sonnet)) < 0.0001)
     }
 
@@ -118,7 +166,7 @@ struct CostCalculatorTests {
             encodedProjectPath: "-Users-test",
             projectName: "test",
             messages: [
-                message(model: "claude-opus-4-7",          input: 0, output: 1_000_000),
+                message(model: "claude-opus-4-7", input: 0, output: 1_000_000),
                 message(model: "claude-haiku-4-5-20251001", input: 0, output: 1_000_000),
             ]
         )

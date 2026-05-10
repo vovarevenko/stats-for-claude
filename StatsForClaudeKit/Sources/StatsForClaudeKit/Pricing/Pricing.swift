@@ -15,10 +15,15 @@ public enum ModelFamily: Sendable {
 
     public init(modelString: String) {
         let lower = modelString.lowercased()
-        if lower.contains("opus") { self = .opus }
-        else if lower.contains("sonnet") { self = .sonnet }
-        else if lower.contains("haiku") { self = .haiku }
-        else { self = .unknown }
+        if lower.contains("opus") {
+            self = .opus
+        } else if lower.contains("sonnet") {
+            self = .sonnet
+        } else if lower.contains("haiku") {
+            self = .haiku
+        } else {
+            self = .unknown
+        }
     }
 }
 
@@ -46,10 +51,10 @@ public enum Pricing {
 
     public static func pricing(for model: String) -> ModelPricing {
         switch ModelFamily(modelString: model) {
-        case .opus:    return opus
-        case .sonnet:  return sonnet
-        case .haiku:   return haiku
-        case .unknown: return sonnet
+        case .opus: opus
+        case .sonnet: sonnet
+        case .haiku: haiku
+        case .unknown: sonnet
         }
     }
 }

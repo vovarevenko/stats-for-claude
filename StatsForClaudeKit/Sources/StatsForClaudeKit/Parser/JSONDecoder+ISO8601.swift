@@ -17,10 +17,10 @@ private enum ISO8601Formatters {
     }()
 }
 
-extension JSONDecoder {
+public extension JSONDecoder {
     /// Decoder accepting both `2026-05-09T15:00:00.000Z` (Anthropic API) and
     /// `2026-05-09T15:00:00Z` (JSONL session files) date strings.
-    public static func iso8601WithOptionalMillis() -> JSONDecoder {
+    static func iso8601WithOptionalMillis() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()

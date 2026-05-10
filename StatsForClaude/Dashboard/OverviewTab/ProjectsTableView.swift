@@ -1,6 +1,6 @@
-import SwiftUI
-import StatsForClaudeKit
 import StatsForClaudeAppKit
+import StatsForClaudeKit
+import SwiftUI
 
 struct ProjectsTableView: View {
     @Environment(MenuBarViewModel.self) private var vm
@@ -34,8 +34,13 @@ struct ProjectsTableView: View {
             .sorted(using: sortOrder)
     }
 
-    private var totalTokens: Int { rows.reduce(0) { $0 + $1.outputTokens } }
-    private var totalCost: Double { rows.reduce(0) { $0 + $1.costUSD } }
+    private var totalTokens: Int {
+        rows.reduce(0) { $0 + $1.outputTokens }
+    }
+
+    private var totalCost: Double {
+        rows.reduce(0) { $0 + $1.costUSD }
+    }
 
     private static let rowHeight: CGFloat = 30
     private static let headerHeight: CGFloat = 30
@@ -128,7 +133,7 @@ struct ProjectsTableView: View {
 /// secondary text — useful as a hierarchy hint between columns.
 private struct ValueBarCell: View {
     let text: String
-    let percent: Double   // 0…100, share of column total
+    let percent: Double // 0…100, share of column total
     let emphasized: Bool
 
     /// Fixed widths so bars and value slots line up identically across both columns
@@ -137,7 +142,9 @@ private struct ValueBarCell: View {
     private static let percentWidth: CGFloat = 32
     private static let valueWidth: CGFloat = 70
 
-    private var fraction: Double { min(1, max(0, percent / 100)) }
+    private var fraction: Double {
+        min(1, max(0, percent / 100))
+    }
 
     private var barTint: Color {
         emphasized ? Color.accentColor : Color.secondary

@@ -30,7 +30,9 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         self.messages = messages
     }
 
-    public var lastTimestamp: Date? { messages.map(\.timestamp).max() }
+    public var lastTimestamp: Date? {
+        messages.map(\.timestamp).max()
+    }
 
     public var totalUsage: TokenUsage {
         messages.reduce(.zero) { $0 + $1.usage }

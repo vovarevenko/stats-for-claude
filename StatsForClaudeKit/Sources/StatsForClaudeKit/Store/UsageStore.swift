@@ -7,7 +7,6 @@ private let log = Log.make("UsageStore")
 @Observable
 @MainActor
 public final class UsageStore {
-
     // ── API-sourced (authoritative for % and reset times) ────────────────────
     public private(set) var apiResponse: UsageAPIResponse?
     public private(set) var apiDataAge: TimeInterval = 0
@@ -19,7 +18,10 @@ public final class UsageStore {
     /// True while either the API or the JSONL refresh is in flight. The two
     /// pipelines run on independent cadences so they need separate flags;
     /// `isLoading` is the OR projection used by the UI for a single spinner.
-    public var isLoading: Bool { apiInFlight || jsonlInFlight }
+    public var isLoading: Bool {
+        apiInFlight || jsonlInFlight
+    }
+
     private var apiInFlight = false
     private var jsonlInFlight = false
 
@@ -29,8 +31,8 @@ public final class UsageStore {
     private let keychain: KeychainTokenReading
     private let tokenCache: TokenCacheStoring
 
-    // In-memory mirror of the Keychain-cached token; avoids a Security framework
-    // round-trip on every refresh inside a single launch.
+    /// In-memory mirror of the Keychain-cached token; avoids a Security framework
+    /// round-trip on every refresh inside a single launch.
     private var cachedToken: String?
 
     public init(
@@ -53,22 +55,28 @@ public final class UsageStore {
 
     private static let legacyDefaultsKey = "cachedClaudeAccessToken"
 
-    public var hasBookmark: Bool { bookmarkStore.hasBookmark }
+    public var hasBookmark: Bool {
+        bookmarkStore.hasBookmark
+    }
 
     // ── Derived convenience ───────────────────────────────────────────────────
 
     public var sessionPercent: Double {
         (apiResponse?.fiveHour?.utilization ?? 0) / 100.0
     }
+
     public var weekPercent: Double {
         (apiResponse?.sevenDay?.utilization ?? 0) / 100.0
     }
+
     public var sessionTimeRemaining: TimeInterval {
         apiResponse?.fiveHour?.timeRemaining ?? 0
     }
+
     public var weekTimeRemaining: TimeInterval {
         apiResponse?.sevenDay?.timeRemaining ?? 0
     }
+
     public var currentProjectName: String? {
         weeklyUsage.projectBreakdown.first?.name
     }
@@ -109,7 +117,7 @@ public final class UsageStore {
 
     /// Used during onboarding when we have a URL but no bookmark yet.
     public func refresh(claudeURL: URL, settings: AppSettings) {
-        guard !apiInFlight && !jsonlInFlight else { return }
+        guard !apiInFlight, !jsonlInFlight else { return }
         apiInFlight = true
         jsonlInFlight = true
         Task {
@@ -123,14 +131,14 @@ public final class UsageStore {
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    // Test seam: tests drive this directly instead of waiting on the spawned
-    // Task to settle.
+    /// Test seam: tests drive this directly instead of waiting on the spawned
+    /// Task to settle.
     func refreshAPIInternal() async {
         do {
             let token = try resolveToken()
             let response = try await usageFetcher.fetchUsage(token: token)
             apiResponse = response
-            apiDataAge  = 0
+            apiDataAge = 0
             appGroupStore.save(response)
         } catch let error as APIError {
             if case .httpError(401) = error {
@@ -191,7 +199,7 @@ public final class UsageStore {
         await loadJSONL(from: url, securityScoped: true, settings: settings)
     }
 
-    private func loadJSONL(from url: URL, securityScoped: Bool, settings: AppSettings) async {
+    private func loadJSONL(from url: URL, securityScoped: Bool, settings _: AppSettings) async {
         let started = securityScoped && url.startAccessingSecurityScopedResource()
         defer { if started { url.stopAccessingSecurityScopedResource() } }
 

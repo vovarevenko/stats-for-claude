@@ -4,7 +4,6 @@ import Testing
 
 @Suite("AppGroupStore")
 struct AppGroupStoreTests {
-
     /// Each test gets an isolated UserDefaults suite that we wipe in `tearDown`.
     private final class TestSuite {
         let id: String
@@ -13,6 +12,7 @@ struct AppGroupStoreTests {
             id = "test.AppGroupStore.\(UUID().uuidString)"
             defaults = UserDefaults(suiteName: id)!
         }
+
         func cleanup() {
             UserDefaults().removePersistentDomain(forName: id)
         }
@@ -45,10 +45,10 @@ struct AppGroupStoreTests {
     }
 
     @Test("loadCachedAPIResponse returns nil when stored data is corrupted")
-    func loadReturnsNilCorrupted() {
+    func loadReturnsNilCorrupted() throws {
         let suite = TestSuite()
         defer { suite.cleanup() }
-        suite.defaults.set("not json".data(using: .utf8)!, forKey: "cachedAPIResponse")
+        try suite.defaults.set(#require("not json".data(using: .utf8)), forKey: "cachedAPIResponse")
 
         let store = AppGroupStore(groupID: suite.id)
         #expect(store.loadCachedAPIResponse() == nil)
@@ -95,7 +95,6 @@ struct AppGroupStoreTests {
 
 @Suite("BookmarkStore")
 struct BookmarkStoreTests {
-
     private func freshDefaults() -> UserDefaults {
         let id = "test.BookmarkStore.\(UUID().uuidString)"
         return UserDefaults(suiteName: id)!

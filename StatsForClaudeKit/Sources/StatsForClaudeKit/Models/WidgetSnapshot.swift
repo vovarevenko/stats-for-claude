@@ -2,8 +2,8 @@ import Foundation
 
 public struct WidgetSnapshot: Codable, Equatable, Sendable {
     public let updatedAt: Date
-    public let sessionPercent: Double   // 0.0–1.0
-    public let weekPercent: Double      // 0.0–1.0
+    public let sessionPercent: Double // 0.0–1.0
+    public let weekPercent: Double // 0.0–1.0
     public let sessionResetsAt: Date?
     public let weekResetsAt: Date?
     public let currentProject: String

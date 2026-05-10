@@ -9,11 +9,11 @@ public struct PlanLimits: Codable, Equatable, Sendable {
         self.weeklyTokens = weeklyTokens
     }
 
-    // Limits are measured in OUTPUT TOKENS ONLY (cache_read tokens are ~90× larger
-    // and are excluded — they don't count toward Claude Code rate limits).
-    // Values are based on community-observed behaviour; override in Settings.
+    /// Limits are measured in OUTPUT TOKENS ONLY (cache_read tokens are ~90× larger
+    /// and are excluded — they don't count toward Claude Code rate limits).
+    /// Values are based on community-observed behaviour; override in Settings.
     public static let pro = PlanLimits(
-        sessionTokens: 50_000,
+        sessionTokens: 50000,
         weeklyTokens: 350_000
     )
 
@@ -29,15 +29,15 @@ public struct PlanLimits: Codable, Equatable, Sendable {
 }
 
 public enum Plan: String, CaseIterable, Codable, Sendable {
-    case pro   = "Pro"
+    case pro = "Pro"
     case max5x = "Max (5×)"
     case max20x = "Max (20×)"
 
     public var limits: PlanLimits {
         switch self {
-        case .pro:    return .pro
-        case .max5x:  return .max5x
-        case .max20x: return .max20x
+        case .pro: .pro
+        case .max5x: .max5x
+        case .max20x: .max20x
         }
     }
 }

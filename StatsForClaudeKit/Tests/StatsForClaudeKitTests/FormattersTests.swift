@@ -4,7 +4,6 @@ import Testing
 
 @Suite("TokenFormatter")
 struct TokenFormatterTests {
-
     @Test("plain digits below 1k", arguments: [
         (0, "0"),
         (1, "1"),
@@ -16,9 +15,9 @@ struct TokenFormatterTests {
     }
 
     @Test("k-suffix between 1k and 1M (boundary inclusive)", arguments: [
-        (1_000, "1.0K"),
-        (1_500, "1.5K"),
-        (12_345, "12.3K"),
+        (1000, "1.0K"),
+        (1500, "1.5K"),
+        (12345, "12.3K"),
         (999_999, "1000.0K"),
     ])
     func thousandsRange(value: Int, expected: String) {
@@ -38,7 +37,6 @@ struct TokenFormatterTests {
 
 @Suite("CountdownFormatter")
 struct CountdownFormatterTests {
-
     @Test("zero or negative interval renders em-dash", arguments: [
         TimeInterval(0),
         TimeInterval(-1),

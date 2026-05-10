@@ -8,7 +8,7 @@ public struct ProjectUsage: Identifiable, Codable, Equatable, Sendable {
     public let costUSD: Double
 
     public init(name: String, encodedPath: String, sessions: [SessionRecord], costUSD: Double) {
-        self.id = encodedPath
+        id = encodedPath
         self.name = name
         self.encodedPath = encodedPath
         self.sessions = sessions

@@ -1,6 +1,6 @@
-import SwiftUI
-import StatsForClaudeKit
 import StatsForClaudeAppKit
+import StatsForClaudeKit
+import SwiftUI
 
 struct MenuBarPopoverView: View {
     /// Don't bother showing the "Updated Xm ago" line if the data is fresher
@@ -35,8 +35,8 @@ struct MenuBarPopoverView: View {
                 let isStale = vm.store.apiDataAge > CachedAPIResponse.staleAfter
                 HStack(spacing: 6) {
                     Image(systemName: isStale
-                          ? "exclamationmark.triangle.fill"
-                          : "clock.arrow.circlepath")
+                        ? "exclamationmark.triangle.fill"
+                        : "clock.arrow.circlepath")
                         .foregroundStyle(isStale ? .orange : .secondary)
                         .accessibilityHidden(true)
                     Text(stalenessLabel)
@@ -96,7 +96,7 @@ private struct UsageRow: View {
     let label: String
     let fraction: Double
     let timeRemaining: TimeInterval
-    var resetsAt: Date? = nil
+    var resetsAt: Date?
 
     private var gaugeTint: Color {
         fraction >= 0.9 ? .red : fraction >= 0.75 ? .orange : .accentColor
@@ -193,20 +193,23 @@ private struct MenuRow: View {
 // MARK: – Window configurator
 
 private struct MenuBarWindowConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> ConfiguratorView { ConfiguratorView() }
-    func updateNSView(_ nsView: ConfiguratorView, context: Context) {}
+    func makeNSView(context _: Context) -> ConfiguratorView {
+        ConfiguratorView()
+    }
+
+    func updateNSView(_: ConfiguratorView, context _: Context) {}
 }
 
-// HIToolbox menu-tracking notifications. Posting these makes the system treat
-// our window as if a real NSMenu were being tracked, which keeps the menu bar
-// pinned even when the user has "Automatically hide and show the menu bar" on.
+/// HIToolbox menu-tracking notifications. Posting these makes the system treat
+/// our window as if a real NSMenu were being tracked, which keeps the menu bar
+/// pinned even when the user has "Automatically hide and show the menu bar" on.
 private extension Notification.Name {
     static let beginMenuTracking = Notification.Name("com.apple.HIToolbox.beginMenuTrackingNotification")
     static let endMenuTracking = Notification.Name("com.apple.HIToolbox.endMenuTrackingNotification")
 }
 
 final class ConfiguratorView: NSView {
-    @MainActor static weak var currentWindow: NSWindow?
+    @MainActor weak static var currentWindow: NSWindow?
 
     @MainActor
     static func dismiss() {

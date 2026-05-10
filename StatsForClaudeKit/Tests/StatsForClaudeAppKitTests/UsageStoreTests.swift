@@ -1,12 +1,11 @@
-import Testing
 import Foundation
-@testable import StatsForClaudeKit
+import Testing
 @testable import StatsForClaudeAppKit
+@testable import StatsForClaudeKit
 
 @MainActor
 @Suite("UsageStore")
 struct UsageStoreTests {
-
     @Test("happy path: API success populates apiResponse")
     func happyPath() async {
         let (group, suite) = makeEphemeralAppGroupStore()

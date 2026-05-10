@@ -4,7 +4,6 @@ import Testing
 
 @Suite("LimitCalculator")
 struct LimitCalculatorTests {
-
     private func makeMessage(
         timestamp: Date,
         model: String = "claude-sonnet-4-6",
@@ -100,7 +99,7 @@ struct LimitCalculatorTests {
         let now = Date()
         let sessionA1 = makeSession(messages: [makeMessage(timestamp: now)], project: "alpha")
         let sessionA2 = makeSession(messages: [makeMessage(timestamp: now)], project: "alpha")
-        let sessionB  = makeSession(messages: [makeMessage(timestamp: now)], project: "beta")
+        let sessionB = makeSession(messages: [makeMessage(timestamp: now)], project: "beta")
         let weekly = LimitCalculator.weeklyUsage(from: [sessionA1, sessionA2, sessionB], now: now)
         #expect(weekly.projectBreakdown.count == 2)
         let alpha = weekly.projectBreakdown.first { $0.name == "alpha" }
@@ -115,7 +114,7 @@ struct LimitCalculatorTests {
             project: "small"
         )
         let big = makeSession(
-            messages: [makeMessage(timestamp: now, input: 10_000, output: 10_000)],
+            messages: [makeMessage(timestamp: now, input: 10000, output: 10000)],
             project: "big"
         )
         let weekly = LimitCalculator.weeklyUsage(from: [small, big], now: now)
@@ -125,22 +124,29 @@ struct LimitCalculatorTests {
     // MARK: – Monthly window
 
     @Test("monthly usage anchored to first of current calendar month")
-    func monthlyAnchored() {
+    func monthlyAnchored() throws {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
         // Pick a deterministic "now" in the middle of a month.
         let comps = DateComponents(year: 2026, month: 5, day: 15, hour: 12)
-        let now = calendar.date(from: comps)!
-        let beforeMonth = calendar.date(from: DateComponents(year: 2026, month: 4, day: 30, hour: 23))!
-        let inMonth = calendar.date(from: DateComponents(year: 2026, month: 5, day: 1, hour: 0, minute: 0, second: 1))!
+        let now = try #require(calendar.date(from: comps))
+        let beforeMonth = try #require(calendar.date(from: DateComponents(year: 2026, month: 4, day: 30, hour: 23)))
+        let inMonth = try #require(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 5,
+            day: 1,
+            hour: 0,
+            minute: 0,
+            second: 1
+        )))
 
         let s1 = makeSession(messages: [makeMessage(timestamp: beforeMonth)], project: "old")
-        let s2 = makeSession(messages: [makeMessage(timestamp: inMonth)],     project: "new")
+        let s2 = makeSession(messages: [makeMessage(timestamp: inMonth)], project: "new")
 
         let monthly = LimitCalculator.monthlyUsage(from: [s1, s2], now: now, calendar: calendar)
         #expect(monthly.projectBreakdown.count == 1)
         #expect(monthly.projectBreakdown.first?.name == "new")
-        let monthStart = calendar.date(from: DateComponents(year: 2026, month: 5, day: 1))!
+        let monthStart = try #require(calendar.date(from: DateComponents(year: 2026, month: 5, day: 1)))
         #expect(monthly.windowStart == monthStart)
         #expect(monthly.windowEnd == now)
     }
@@ -155,7 +161,7 @@ struct LimitCalculatorTests {
         let priceA = LimitCalculator.amortizedSubscriptionCost(forProject: pA, totalCost: total, subscriptionPrice: 20)
         let priceB = LimitCalculator.amortizedSubscriptionCost(forProject: pB, totalCost: total, subscriptionPrice: 20)
         #expect(abs(priceA - 15.0) < 0.0001)
-        #expect(abs(priceB -  5.0) < 0.0001)
+        #expect(abs(priceB - 5.0) < 0.0001)
         #expect(abs(priceA + priceB - 20.0) < 0.0001)
     }
 

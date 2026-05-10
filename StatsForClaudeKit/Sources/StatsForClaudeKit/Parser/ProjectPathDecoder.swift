@@ -43,7 +43,7 @@ public enum ProjectPathDecoder {
             let lookAhead = min(i + 8, pathParts.count - 1)
             // Try longest match first to handle hyphenated names
             for j in stride(from: lookAhead, through: i, by: -1) {
-                let segment = pathParts[i...j].joined(separator: "-")
+                let segment = pathParts[i ... j].joined(separator: "-")
                 let candidate = (resolvedPath as NSString).appendingPathComponent(segment)
                 if fm.fileExists(atPath: candidate) {
                     resolvedPath = candidate
@@ -84,7 +84,9 @@ public enum ProjectPathDecoder {
         for arr in arrays.dropFirst() {
             let limit = min(commonLen, arr.count)
             var i = 0
-            while i < limit && arrays[0][i] == arr[i] { i += 1 }
+            while i < limit, arrays[0][i] == arr[i] {
+                i += 1
+            }
             commonLen = i
             if commonLen == 0 { break }
         }
@@ -92,7 +94,9 @@ public enum ProjectPathDecoder {
         // Trim back to last `/` to avoid splitting in the middle of a folder name.
         var trim = commonLen
         let slash = Unicode.Scalar(UInt8(ascii: "/"))
-        while trim > 0 && arrays[0][trim - 1] != slash { trim -= 1 }
+        while trim > 0, arrays[0][trim - 1] != slash {
+            trim -= 1
+        }
 
         var result: [String: String] = [:]
         for (path, scalars) in zip(paths, arrays) {

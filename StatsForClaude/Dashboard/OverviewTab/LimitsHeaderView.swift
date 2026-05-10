@@ -1,6 +1,6 @@
-import SwiftUI
-import StatsForClaudeKit
 import StatsForClaudeAppKit
+import StatsForClaudeKit
+import SwiftUI
 
 struct LimitsHeaderView: View {
     @Environment(MenuBarViewModel.self) private var vm
@@ -28,9 +28,9 @@ struct LimitsHeaderView: View {
 private struct LimitCard: View {
     let title: String
     let fraction: Double
-    let percent: Int?      // nil = no data
+    let percent: Int? // nil = no data
     let timeRemaining: TimeInterval
-    var resetsAt: Date? = nil
+    var resetsAt: Date?
 
     private var gaugeTint: Color {
         fraction >= 0.9 ? .red : fraction >= 0.75 ? .orange : .accentColor
@@ -104,11 +104,10 @@ private struct LimitCard: View {
     }
 
     private var a11yLabel: String {
-        let pctPart: String
-        if let pct = percent {
-            pctPart = String(format: String(localized: "a11y_limit_card_with_percent"), title, pct)
+        let pctPart = if let pct = percent {
+            String(format: String(localized: "a11y_limit_card_with_percent"), title, pct)
         } else {
-            pctPart = String(format: String(localized: "a11y_limit_card_no_data"), title)
+            String(format: String(localized: "a11y_limit_card_no_data"), title)
         }
         guard timeRemaining > 0 else { return pctPart }
         return pctPart + ". " + String(format: String(localized: "resets_in"), CountdownFormatter.format(timeRemaining))

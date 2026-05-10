@@ -22,7 +22,11 @@ struct JSONLParserTests {
         private func record() throws -> SessionRecord {
             let url = try #require(
                 Bundle.module.url(forResource: "Fixtures/session_sonnet.jsonl", withExtension: nil)
-                    ?? Bundle.module.url(forResource: "session_sonnet.jsonl", withExtension: nil, subdirectory: "Fixtures")
+                    ?? Bundle.module.url(
+                        forResource: "session_sonnet.jsonl",
+                        withExtension: nil,
+                        subdirectory: "Fixtures"
+                    )
             )
             let parsed = try parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project")
             return try #require(parsed)
@@ -38,10 +42,10 @@ struct JSONLParserTests {
         @Test("aggregates token totals across messages")
         func totalTokens() throws {
             let usage = try record().totalUsage
-            #expect(usage.inputTokens == 30)        // 10+15+5
-            #expect(usage.outputTokens == 55)       // 20+25+10
-            #expect(usage.cacheWriteTokens == 100)  // 100+0+0
-            #expect(usage.cacheReadTokens == 400)   // 50+150+200
+            #expect(usage.inputTokens == 30) // 10+15+5
+            #expect(usage.outputTokens == 55) // 20+25+10
+            #expect(usage.cacheWriteTokens == 100) // 100+0+0
+            #expect(usage.cacheReadTokens == 400) // 50+150+200
             #expect(usage.total == 585)
         }
 
@@ -70,7 +74,11 @@ struct JSONLParserTests {
         private func record() throws -> SessionRecord {
             let url = try #require(
                 Bundle.module.url(forResource: "Fixtures/session_opus.jsonl", withExtension: nil)
-                    ?? Bundle.module.url(forResource: "session_opus.jsonl", withExtension: nil, subdirectory: "Fixtures")
+                    ?? Bundle.module.url(
+                        forResource: "session_opus.jsonl",
+                        withExtension: nil,
+                        subdirectory: "Fixtures"
+                    )
             )
             let parsed = try parser.parseSession(at: url, encodedProjectPath: "-Users-test-opus")
             return try #require(parsed)
@@ -86,10 +94,10 @@ struct JSONLParserTests {
         @Test("aggregates token totals")
         func totalTokens() throws {
             let usage = try record().totalUsage
-            #expect(usage.inputTokens == 80)        // 50+30
-            #expect(usage.outputTokens == 180)      // 100+80
-            #expect(usage.cacheWriteTokens == 500)  // 500+0
-            #expect(usage.cacheReadTokens == 900)   // 200+700
+            #expect(usage.inputTokens == 80) // 50+30
+            #expect(usage.outputTokens == 180) // 100+80
+            #expect(usage.cacheWriteTokens == 500) // 500+0
+            #expect(usage.cacheReadTokens == 900) // 200+700
         }
     }
 
@@ -181,7 +189,11 @@ struct JSONLParserTests {
         let jsonl = #"""
         {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":1}},"timestamp":"2026-05-01T10:00:00.000Z"}
         """#.data(using: .utf8)!
-        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "fallback-id"))
+        let record = try #require(parser.parseSession(
+            from: jsonl,
+            encodedProjectPath: "",
+            fallbackSessionId: "fallback-id"
+        ))
         #expect(record.sessionId == "fallback-id")
     }
 
@@ -192,6 +204,6 @@ struct JSONLParserTests {
         """#.data(using: .utf8)!
         let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "sU"))
         #expect(record.projectName == "Unknown")
-        #expect(record.encodedProjectPath == "")
+        #expect(record.encodedProjectPath.isEmpty)
     }
 }

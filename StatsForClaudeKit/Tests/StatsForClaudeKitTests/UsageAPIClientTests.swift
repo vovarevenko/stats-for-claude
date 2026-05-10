@@ -11,8 +11,14 @@ private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
 
     nonisolated(unsafe) static var handler: Handler?
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override class func canInit(with _: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
     override func startLoading() {
         guard let handler = Self.handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.unknown))
@@ -27,6 +33,7 @@ private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didFailWithError: error)
         }
     }
+
     override func stopLoading() {}
 }
 
@@ -42,7 +49,6 @@ private func makeResponse(status: Int) -> HTTPURLResponse {
 
 @Suite("UsageAPIClient", .serialized)
 struct UsageAPIClientTests {
-
     @Test("200 OK with valid JSON returns parsed UsageAPIResponse")
     func successfulFetch() async throws {
         StubURLProtocol.handler = { _ in
@@ -95,7 +101,7 @@ struct UsageAPIClientTests {
             _ = try await UsageAPIClient(session: stubbedSession()).fetchUsage(token: "x")
             Issue.record("expected throw")
         } catch let error as APIError {
-            if case .httpError(let code) = error {
+            if case let .httpError(code) = error {
                 #expect(code == 401)
             } else {
                 Issue.record("wrong APIError case: \(error)")
@@ -114,7 +120,7 @@ struct UsageAPIClientTests {
             _ = try await UsageAPIClient(session: stubbedSession()).fetchUsage(token: "x")
             Issue.record("expected throw")
         } catch let error as APIError {
-            if case .httpError(let code) = error {
+            if case let .httpError(code) = error {
                 #expect(code == 500)
             } else {
                 Issue.record("wrong APIError case: \(error)")
@@ -126,7 +132,7 @@ struct UsageAPIClientTests {
 
     @Test("malformed body maps to APIError.decodingFailed")
     func decodingFailureMaps() async throws {
-        StubURLProtocol.handler = { _ in (makeResponse(status: 200), "garbage".data(using: .utf8)!) }
+        StubURLProtocol.handler = { _ in (makeResponse(status: 200), Data("garbage".utf8)) }
         defer { StubURLProtocol.handler = nil }
 
         do {

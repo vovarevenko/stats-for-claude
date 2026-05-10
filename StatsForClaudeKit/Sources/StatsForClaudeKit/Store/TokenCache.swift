@@ -1,6 +1,6 @@
 import Foundation
-import Security
 import OSLog
+import Security
 
 public protocol TokenCacheStoring: Sendable {
     func readToken() -> String?
@@ -30,11 +30,11 @@ public struct KeychainTokenCache: TokenCacheStoring, Sendable {
 
     public func readToken() -> String? {
         let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
+            kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: Self.account,
-            kSecReturnData as String:  true,
-            kSecMatchLimit as String:  kSecMatchLimitOne,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
         var item: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -56,7 +56,7 @@ public struct KeychainTokenCache: TokenCacheStoring, Sendable {
     public func writeToken(_ token: String) {
         // Try update-in-place first so we keep ACLs, then fall back to add.
         let match: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
+            kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: Self.account,
         ]
@@ -87,12 +87,12 @@ public struct KeychainTokenCache: TokenCacheStoring, Sendable {
 
     public func deleteToken() {
         let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
+            kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: Self.account,
         ]
         let status = SecItemDelete(query as CFDictionary)
-        if status != errSecSuccess && status != errSecItemNotFound {
+        if status != errSecSuccess, status != errSecItemNotFound {
             log.error("Token cache delete failed: \(Self.describe(status), privacy: .public)")
         }
     }

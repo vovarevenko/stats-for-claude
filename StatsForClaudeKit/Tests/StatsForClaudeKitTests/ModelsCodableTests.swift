@@ -17,7 +17,7 @@ private func iso8601Decoder() -> JSONDecoder {
     return d
 }
 
-private func roundTrip<T: Codable & Equatable>(_ value: T, file: StaticString = #file, line: UInt = #line) throws {
+private func roundTrip<T: Codable & Equatable>(_ value: T, file _: StaticString = #file, line _: UInt = #line) throws {
     let encoder = iso8601Encoder()
     let decoder = iso8601Decoder()
     let data = try encoder.encode(value)
@@ -35,7 +35,6 @@ private func date(_ iso: String) -> Date {
 
 @Suite("TokenUsage Codable")
 struct TokenUsageCodableTests {
-
     @Test("round-trip preserves all fields")
     func roundTripBasic() throws {
         try roundTrip(TokenUsage(
@@ -75,7 +74,6 @@ struct TokenUsageCodableTests {
 
 @Suite("Session models Codable")
 struct SessionCodableTests {
-
     private func sampleSession() -> SessionRecord {
         SessionRecord(
             sessionId: "sid-1",
@@ -139,7 +137,6 @@ struct SessionCodableTests {
 
 @Suite("Aggregate usage Codable")
 struct AggregateUsageCodableTests {
-
     private func sampleProject() -> ProjectUsage {
         ProjectUsage(
             name: "app",
@@ -154,9 +151,9 @@ struct AggregateUsageCodableTests {
                             timestamp: date("2026-05-01T10:00:00Z"),
                             model: "claude-sonnet-4-6",
                             usage: TokenUsage(inputTokens: 1, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0)
-                        )
+                        ),
                     ]
-                )
+                ),
             ],
             costUSD: 1.23
         )
@@ -179,7 +176,7 @@ struct AggregateUsageCodableTests {
     func weeklyRoundTrip() throws {
         let weekly = WeeklyUsage(
             windowStart: date("2026-05-01T00:00:00Z"),
-            windowEnd:   date("2026-05-08T00:00:00Z"),
+            windowEnd: date("2026-05-08T00:00:00Z"),
             projectBreakdown: [sampleProject()],
             costUSD: 1.23
         )
@@ -196,7 +193,6 @@ struct AggregateUsageCodableTests {
 
 @Suite("WidgetSnapshot Codable")
 struct WidgetSnapshotCodableTests {
-
     @Test("round-trip with non-nil reset dates")
     func roundTripWithDates() throws {
         try roundTrip(WidgetSnapshot(
@@ -230,7 +226,6 @@ struct WidgetSnapshotCodableTests {
 
 @Suite("AppSettings Codable")
 struct AppSettingsCodableTests {
-
     @Test("default round-trip")
     func defaultRoundTrip() throws {
         try roundTrip(AppSettings.default)
@@ -277,7 +272,6 @@ struct AppSettingsCodableTests {
 
 @Suite("UsageAPIResponse Codable")
 struct UsageAPIResponseCodableTests {
-
     @Test("decodes realistic snake_case payload")
     func decodesSnakeCase() throws {
         let payload = #"""
@@ -294,7 +288,7 @@ struct UsageAPIResponseCodableTests {
 
     @Test("missing windows decode as nil")
     func missingWindowsDecodeAsNil() throws {
-        let payload = "{}".data(using: .utf8)!
+        let payload = Data("{}".utf8)
         let response = try iso8601Decoder().decode(UsageAPIResponse.self, from: payload)
         #expect(response.fiveHour == nil)
         #expect(response.sevenDay == nil)
@@ -322,7 +316,7 @@ struct UsageAPIResponseCodableTests {
     func responseRoundTripPreservesKeys() throws {
         let original = UsageAPIResponse(
             fiveHour: UsageWindow(utilization: 12.5, resetsAt: date("2026-05-10T17:00:00Z")),
-            sevenDay: UsageWindow(utilization: 30,   resetsAt: date("2026-05-17T12:00:00Z"))
+            sevenDay: UsageWindow(utilization: 30, resetsAt: date("2026-05-17T12:00:00Z"))
         )
         let data = try iso8601Encoder().encode(original)
         let json = try #require(String(data: data, encoding: .utf8))
@@ -338,7 +332,6 @@ struct UsageAPIResponseCodableTests {
 
 @Suite("CachedAPIResponse Codable")
 struct CachedAPIResponseCodableTests {
-
     @Test("round-trip preserves response and fetchedAt")
     func roundTrip() throws {
         let original = CachedAPIResponse(

@@ -21,10 +21,10 @@ public struct UsageAPIClient: Sendable {
     public func fetchUsage(token: String) async throws -> UsageAPIResponse {
         var req = URLRequest(url: Self.endpoint)
         req.timeoutInterval = Self.requestTimeout
-        req.setValue("Bearer \(token)",   forHTTPHeaderField: "Authorization")
-        req.setValue("application/json",  forHTTPHeaderField: "Accept")
-        req.setValue("application/json",  forHTTPHeaderField: "Content-Type")
-        req.setValue(Self.userAgent,      forHTTPHeaderField: "User-Agent")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
         req.setValue(Self.oauthBetaHeader, forHTTPHeaderField: "anthropic-beta")
 
         let (data, response) = try await session.data(for: req)

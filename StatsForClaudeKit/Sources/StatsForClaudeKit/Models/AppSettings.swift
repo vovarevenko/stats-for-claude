@@ -11,7 +11,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case usd = "USD"
         case eur = "EUR"
 
-        public var symbol: String { rawValue == "USD" ? "$" : "€" }
+        public var symbol: String {
+            rawValue == "USD" ? "$" : "€"
+        }
     }
 
     public init(

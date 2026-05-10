@@ -1,6 +1,6 @@
-import SwiftUI
-import StatsForClaudeKit
 import StatsForClaudeAppKit
+import StatsForClaudeKit
+import SwiftUI
 
 struct OverviewTabView: View {
     @Environment(\.openWindow) private var openWindow

@@ -4,10 +4,9 @@ import Testing
 
 @Suite("PlanLimits")
 struct PlanLimitsTests {
-
     @Test("Pro plan limits")
     func proLimits() {
-        #expect(PlanLimits.pro.sessionTokens == 50_000)
+        #expect(PlanLimits.pro.sessionTokens == 50000)
         #expect(PlanLimits.pro.weeklyTokens == 350_000)
     }
 
@@ -24,9 +23,9 @@ struct PlanLimitsTests {
     }
 
     @Test("Plan.limits maps to the corresponding PlanLimits", arguments: [
-        (Plan.pro,    PlanLimits.pro),
-        (.max5x,      .max5x),
-        (.max20x,     .max20x),
+        (Plan.pro, PlanLimits.pro),
+        (.max5x, .max5x),
+        (.max20x, .max20x),
     ])
     func planMapping(plan: Plan, expected: PlanLimits) {
         #expect(plan.limits == expected)

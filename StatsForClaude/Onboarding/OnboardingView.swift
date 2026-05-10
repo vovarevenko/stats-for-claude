@@ -1,7 +1,7 @@
-import SwiftUI
 import OSLog
-import StatsForClaudeKit
 import StatsForClaudeAppKit
+import StatsForClaudeKit
+import SwiftUI
 
 private let log = Log.make("Onboarding")
 
@@ -17,7 +17,7 @@ struct OnboardingView: View {
             switch phase {
             case .welcome: welcomeContent
             case .success: successContent
-            case .failed(let msg): failedContent(msg)
+            case let .failed(msg): failedContent(msg)
             }
         }
         .padding(44)
@@ -110,7 +110,7 @@ struct OnboardingView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.showsHiddenFiles = true            // .claude is a hidden directory
+        panel.showsHiddenFiles = true // .claude is a hidden directory
         panel.prompt = String(localized: "choose_folder")
 
         // Pre-navigate to ~/.claude so the user only needs to click Open

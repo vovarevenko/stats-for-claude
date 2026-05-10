@@ -7,15 +7,16 @@ import Testing
 /// rewrite that is orders of magnitude slower, not to police microseconds.
 @Suite("Performance budgets")
 struct PerformanceTests {
-
     @Test(.timeLimit(.minutes(1)))
-    func jsonlParseTenThousandMessages() async throws {
-        let messageCount = 10_000
+    func jsonlParseTenThousandMessages() throws {
+        let messageCount = 10000
         var data = Data()
         let timestamp = "2026-05-09T12:00:00.000Z"
-        for _ in 0..<messageCount {
+        for _ in 0 ..< messageCount {
             let line = """
-            {"timestamp":"\(timestamp)","sessionId":"perf","message":{"role":"assistant","model":"claude-sonnet-4","usage":{"input_tokens":120,"output_tokens":340,"cache_read_input_tokens":50,"cache_creation_input_tokens":12}}}
+            {"timestamp":"\(
+                timestamp
+            )","sessionId":"perf","message":{"role":"assistant","model":"claude-sonnet-4","usage":{"input_tokens":120,"output_tokens":340,"cache_read_input_tokens":50,"cache_creation_input_tokens":12}}}
             """
             data.append(Data(line.utf8))
             data.append(UInt8(ascii: "\n"))
@@ -32,8 +33,8 @@ struct PerformanceTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
-    func uniqueSuffixesScalesLinearly() async throws {
-        let paths = (0..<5_000).map { "/Users/test/Projects/group-\($0 / 100)/proj-\($0)" }
+    func uniqueSuffixesScalesLinearly() {
+        let paths = (0 ..< 5000).map { "/Users/test/Projects/group-\($0 / 100)/proj-\($0)" }
         let result = ProjectPathDecoder.uniqueSuffixes(of: paths)
         #expect(result.count == paths.count)
     }

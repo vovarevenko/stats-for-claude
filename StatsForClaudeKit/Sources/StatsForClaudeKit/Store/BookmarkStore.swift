@@ -33,7 +33,8 @@ public final class BookmarkStore: BookmarkResolving, @unchecked Sendable {
     }
 
     /// Resolves the stored bookmark to a URL. Returns `nil` if no bookmark is stored.
-    /// The caller is responsible for calling `startAccessingSecurityScopedResource()` / `stopAccessingSecurityScopedResource()`.
+    /// The caller is responsible for calling `startAccessingSecurityScopedResource()` /
+    /// `stopAccessingSecurityScopedResource()`.
     public func resolve() throws -> URL? {
         guard let data = defaults.data(forKey: key) else { return nil }
         var stale = false

@@ -33,10 +33,10 @@ public enum APIError: LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .tokenNotFound:      return "Claude Code credentials not found in Keychain"
-        case .invalidResponse:    return "Invalid API response"
-        case .httpError(let c):   return "API error (HTTP \(c))"
-        case .decodingFailed(let m): return "Decoding failed: \(m)"
+        case .tokenNotFound: "Claude Code credentials not found in Keychain"
+        case .invalidResponse: "Invalid API response"
+        case let .httpError(c): "API error (HTTP \(c))"
+        case let .decodingFailed(m): "Decoding failed: \(m)"
         }
     }
 }

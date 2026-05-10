@@ -5,7 +5,6 @@ import Testing
 
 @Suite("KeychainStore", .serialized)
 struct KeychainStoreTests {
-
     /// Helper that adds and tears down a generic-password keychain item under
     /// a unique service name so tests cannot collide with the real app entry.
     private final class KeychainItem {
@@ -14,21 +13,22 @@ struct KeychainStoreTests {
             self.service = service
             // Best-effort cleanup before insert.
             let delQuery: [String: Any] = [
-                kSecClass as String:       kSecClassGenericPassword,
+                kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
             ]
             SecItemDelete(delQuery as CFDictionary)
 
             let addQuery: [String: Any] = [
-                kSecClass as String:       kSecClassGenericPassword,
+                kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
-                kSecValueData as String:   payload,
+                kSecValueData as String: payload,
             ]
             _ = SecItemAdd(addQuery as CFDictionary, nil)
         }
+
         deinit {
             let query: [String: Any] = [
-                kSecClass as String:       kSecClassGenericPassword,
+                kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
             ]
             SecItemDelete(query as CFDictionary)
@@ -48,9 +48,9 @@ struct KeychainStoreTests {
     }
 
     @Test("malformed payload throws tokenNotFound")
-    func malformedThrowsTokenNotFound() {
+    func malformedThrowsTokenNotFound() throws {
         let service = uniqueService()
-        let item = KeychainItem(service: service, payload: "not json".data(using: .utf8)!)
+        let item = try KeychainItem(service: service, payload: #require("not json".data(using: .utf8)))
         defer { _ = item }
         let store = KeychainStore(service: service)
         #expect(throws: APIError.self) {
@@ -62,7 +62,7 @@ struct KeychainStoreTests {
     func missingAccessTokenThrows() throws {
         let service = uniqueService()
         let payload = try JSONSerialization.data(withJSONObject: [
-            "claudeAiOauth": ["other": "field"]
+            "claudeAiOauth": ["other": "field"],
         ])
         let item = KeychainItem(service: service, payload: payload)
         defer { _ = item }
@@ -76,7 +76,7 @@ struct KeychainStoreTests {
     func validPayloadReturnsToken() throws {
         let service = uniqueService()
         let payload = try JSONSerialization.data(withJSONObject: [
-            "claudeAiOauth": ["accessToken": "secret-abc"]
+            "claudeAiOauth": ["accessToken": "secret-abc"],
         ])
         let item = KeychainItem(service: service, payload: payload)
         defer { _ = item }

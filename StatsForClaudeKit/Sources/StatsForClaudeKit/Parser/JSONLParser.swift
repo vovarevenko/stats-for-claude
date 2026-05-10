@@ -7,7 +7,11 @@ public struct JSONLParser: Sendable {
 
     public func parseSession(at url: URL, encodedProjectPath: String) throws -> SessionRecord? {
         let data = try Data(contentsOf: url)
-        return parseSession(from: data, encodedProjectPath: encodedProjectPath, fallbackSessionId: url.deletingPathExtension().lastPathComponent)
+        return parseSession(
+            from: data,
+            encodedProjectPath: encodedProjectPath,
+            fallbackSessionId: url.deletingPathExtension().lastPathComponent
+        )
     }
 
     public func parseAllSessions(in claudeDir: URL) throws -> [SessionRecord] {
@@ -70,11 +74,10 @@ public struct JSONLParser: Sendable {
         guard !messages.isEmpty else { return nil }
 
         let sid = sessionId ?? fallbackSessionId
-        let projectName: String
-        if encodedProjectPath.isEmpty {
-            projectName = "Unknown"
+        let projectName: String = if encodedProjectPath.isEmpty {
+            "Unknown"
         } else {
-            projectName = ProjectPathDecoder.resolvedProjectName(from: encodedProjectPath)
+            ProjectPathDecoder.resolvedProjectName(from: encodedProjectPath)
         }
 
         return SessionRecord(
@@ -84,7 +87,6 @@ public struct JSONLParser: Sendable {
             messages: messages
         )
     }
-
 }
 
 // MARK: – Private decoding types
@@ -107,9 +109,9 @@ private struct RawEntry: Decodable {
         let cacheCreationInputTokens: Int?
 
         enum CodingKeys: String, CodingKey {
-            case inputTokens              = "input_tokens"
-            case outputTokens             = "output_tokens"
-            case cacheReadInputTokens     = "cache_read_input_tokens"
+            case inputTokens = "input_tokens"
+            case outputTokens = "output_tokens"
+            case cacheReadInputTokens = "cache_read_input_tokens"
             case cacheCreationInputTokens = "cache_creation_input_tokens"
         }
     }
