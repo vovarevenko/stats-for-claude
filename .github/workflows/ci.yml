@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: swift test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Cache SPM build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            StatsForClaudeKit/.build
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('StatsForClaudeKit/Package.swift', 'StatsForClaudeKit/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: swift test
+        working-directory: StatsForClaudeKit
+        run: swift test --parallel
+
+  lint:
+    name: SwiftLint + SwiftFormat
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install linters
+        run: brew install swiftlint swiftformat
+
+      - name: SwiftLint (strict)
+        run: swiftlint --strict
+
+      - name: SwiftFormat (check only)
+        run: swiftformat --lint .

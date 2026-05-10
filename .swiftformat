@@ -1,0 +1,28 @@
+# Swift language version
+--swiftversion 6.0
+
+# Paths excluded from formatting
+--exclude .build,DerivedData,StatsForClaude.xcodeproj,StatsForClaudeKit/.build,StatsForClaudeKit/.swiftpm
+
+# Layout
+--maxwidth 120
+--indent 4
+--linebreaks lf
+--commas always
+--trimwhitespace always
+--semicolons never
+--allman false
+
+# Self
+--self remove
+--selfrequired @autoclosure
+
+# Imports
+--importgrouping testable-bottom
+
+# Header — keep whatever the file already has; we don't want to inject a header.
+--header ignore
+
+# Swift 6 niceties
+--shortoptionals always
+--redundanttype inferred
