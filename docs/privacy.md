@@ -43,7 +43,7 @@ The App is rated 4+ on the App Store. It does not knowingly collect data from an
 
 ## Changes to this policy
 
-If this policy changes, the new version will be published at the same URL with an updated effective date. The history is also available in the [GitHub repository](https://github.com/vovarevenko/stats-for-claude/commits/main/docs/privacy.md).
+If this policy changes, the new version will be published at the same URL with an updated effective date. The history is also available in the [GitHub repository](https://github.com/vovarevenko/stats-for-claude/commits/dev/docs/privacy.md).
 
 ## Contact
 

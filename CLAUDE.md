@@ -324,7 +324,7 @@ Hard rules:
 
 - **No `Co-Authored-By: Claude` trailer.**
 - No `--no-verify`, no `--amend` for pushed commits, no `push --force` to
-  `main`/`master`.
+  the default branch (`dev` in this repo).
 - Stage by name (`git add path/to/file`), never `-A` or `.` — keeps
   `.env`, build artefacts, screenshots out of commits.
 - Wire-format breaking change → add `BREAKING CHANGE:` footer and ship a
@@ -452,7 +452,7 @@ they don't get lost. None blocks day-to-day development.
 - [ ] Mac App Distribution certificate issued.
 - [ ] App Store Connect app record created (name, bundle ID, SKU,
       primary language).
-- [ ] GitHub Pages enabled (Settings → Pages, source `main /docs`).
+- [ ] GitHub Pages enabled (Settings → Pages, source `dev /docs`).
 - [ ] Privacy Policy URL set in App Store Connect (once Pages live).
 - [ ] First archive uploaded; Export Compliance answered.
 - [ ] TestFlight build distributed to internal testers (and external if
