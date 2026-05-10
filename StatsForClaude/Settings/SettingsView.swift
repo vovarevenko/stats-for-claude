@@ -85,7 +85,7 @@ struct SettingsView: View {
             // ── Claude directory ─────────────────────────────────────────────
             Section {
                 HStack {
-                    Text(claudeDirectoryPath.isEmpty ? "Not set" : claudeDirectoryPath)
+                    Text(claudeDirectoryPath.isEmpty ? String(localized: "not_set") : claudeDirectoryPath)
                         .foregroundStyle(claudeDirectoryPath.isEmpty ? .secondary : .primary)
                         .lineLimit(1)
                         .truncationMode(.middle)

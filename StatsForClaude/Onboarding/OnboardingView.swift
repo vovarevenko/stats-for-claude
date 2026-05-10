@@ -67,7 +67,7 @@ struct OnboardingView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.green)
 
-            Text(String(localized: "get_started"))
+            Text(String(localized: "onboarding_success_title"))
                 .font(.title2.bold())
 
             Button(String(localized: "get_started")) {

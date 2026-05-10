@@ -46,7 +46,7 @@ struct MenuBarPopoverView: View {
                 .padding(.vertical, 7)
             }
 
-            MenuRow(label: "Dashboard") {
+            MenuRow(label: String(localized: "menu_dashboard")) {
                 vm.selectedTab = .overview
                 openWindow(id: "dashboard")
                 NSApp.activate(ignoringOtherApps: true)
@@ -75,10 +75,15 @@ struct MenuBarPopoverView: View {
     private var stalenessLabel: String {
         let age = vm.store.apiDataAge
         let mins = Int(age / 60)
-        if mins < 60 { return "Updated \(mins)m ago" }
+        if mins < 60 {
+            return String(format: String(localized: "updated_minutes_ago"), mins)
+        }
         let hours = Int(age / 3600)
         let remainingMins = (Int(age) % 3600) / 60
-        return remainingMins > 0 ? "Updated \(hours)h \(remainingMins)m ago" : "Updated \(hours)h ago"
+        if remainingMins > 0 {
+            return String(format: String(localized: "updated_hours_minutes_ago"), hours, remainingMins)
+        }
+        return String(format: String(localized: "updated_hours_ago"), hours)
     }
 }
 
