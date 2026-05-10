@@ -4,9 +4,11 @@ import Security
 /// Reads Claude Code OAuth credentials from the macOS Keychain.
 /// On first access macOS will prompt the user to allow access.
 public final class KeychainStore: @unchecked Sendable {
-    private let service = "Claude Code-credentials"
+    private let service: String
 
-    public init() {}
+    public init(service: String = "Claude Code-credentials") {
+        self.service = service
+    }
 
     public func readClaudeToken() throws -> String {
         let query: [String: Any] = [
