@@ -17,7 +17,7 @@
 		BCA5BEA57C4801865E000D8A /* LimitsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D85E34F357A33BA26ECF78 /* LimitsHeaderView.swift */; };
 		C17110C71DF054E5EA46070C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F96680EB7E3944B67A042A /* SettingsView.swift */; };
 		EB43807B0A152FB4AB63DDF2 /* MenuBarPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE551D91B741B0364DE54684 /* MenuBarPopoverView.swift */; };
-		61C45274408143C2B36364DF /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 276A88DD0624453D9B7F135C /* Localizable.xcstrings */; };
+		BE7F75BBFC984D7085A27293 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C1CFC0D024CA497CAADE8651 /* Localizable.xcstrings */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,7 +31,7 @@
 		E4D85E34F357A33BA26ECF78 /* LimitsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimitsHeaderView.swift; sourceTree = "<group>"; };
 		E79F93B65DC3F83384EBBE8E /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		FFDC494DC8F5A176AC5A6163 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
-		276A88DD0624453D9B7F135C /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.xml.xcstrings; name = Localizable.xcstrings; path = "StatsForClaude/Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
+		C1CFC0D024CA497CAADE8651 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.xml.xcstrings; name = Localizable.xcstrings; path = "StatsForClaude/Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
 		/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,11 +46,11 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 /* Begin PBXResourcesBuildPhase section */
-		CA4A17D328504C78AB59B5DC /* Resources */ = {
+		AFAF675D81E64ADF9097D790 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				61C45274408143C2B36364DF /* Localizable.xcstrings in Resources */,
+				BE7F75BBFC984D7085A27293 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,7 +147,7 @@
 			buildPhases = (
 				2554468CADF7BEB6F5132E5E /* Sources */,
 				D8E14CB4D5A9C56A2CFF0379 /* Frameworks */,
-				CA4A17D328504C78AB59B5DC /* Resources */,
+				AFAF675D81E64ADF9097D790 /* Resources */,
 			);
 			buildRules = (
 			);
