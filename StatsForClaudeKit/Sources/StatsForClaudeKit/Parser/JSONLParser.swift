@@ -40,7 +40,7 @@ public struct JSONLParser: Sendable {
     // MARK: – Internal parsing
 
     func parseSession(from data: Data, encodedProjectPath: String, fallbackSessionId: String) -> SessionRecord? {
-        let decoder = Self.makeDecoder()
+        let decoder = JSONDecoder.iso8601WithOptionalMillis()
         let lines = data.split(separator: UInt8(ascii: "\n"), omittingEmptySubsequences: true)
 
         var messages: [MessageRecord] = []
@@ -85,32 +85,6 @@ public struct JSONLParser: Sendable {
         )
     }
 
-    // MARK: – Helpers
-
-    private static func makeDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        let withMillis: ISO8601DateFormatter = {
-            let f = ISO8601DateFormatter()
-            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            return f
-        }()
-        let plain: ISO8601DateFormatter = {
-            let f = ISO8601DateFormatter()
-            f.formatOptions = [.withInternetDateTime]
-            return f
-        }()
-        decoder.dateDecodingStrategy = .custom { dec in
-            let container = try dec.singleValueContainer()
-            let string = try container.decode(String.self)
-            if let date = withMillis.date(from: string) { return date }
-            if let date = plain.date(from: string) { return date }
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Unrecognised date format: \(string)"
-            )
-        }
-        return decoder
-    }
 }
 
 // MARK: – Private decoding types

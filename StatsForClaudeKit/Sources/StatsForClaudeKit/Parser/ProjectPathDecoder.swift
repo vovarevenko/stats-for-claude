@@ -32,10 +32,9 @@ public enum ProjectPathDecoder {
         let fm = FileManager.default
 
         // Split: "-Users-vovarevenko-Code-my-project" → ["", "Users", "vovarevenko", "Code", "my", "project"]
-        let parts = encoded.components(separatedBy: "-")
-        guard parts.count > 1 else { return encoded }
-
-        let pathParts = Array(parts.dropFirst()) // drop leading ""
+        // The leading "" comes from the prefix "-" guarded above; we drop it.
+        let pathParts = Array(encoded.components(separatedBy: "-").dropFirst())
+        guard !pathParts.isEmpty else { return encoded }
         var resolvedPath = "/"
         var i = 0
 
