@@ -125,7 +125,7 @@ stats-for-claude/
       Localizable.xcstrings
       PrivacyInfo.xcprivacy
       StatsForClaude.entitlements
-      Assets.xcassets/           ← AccentColor + AppIcon scaffolding (no PNGs yet)
+      Assets.xcassets/           ← AccentColor + AppIcon
 
   StatsForClaudeKit/
     Package.swift                ← two products: StatsForClaudeKit, StatsForClaudeAppKit
@@ -444,24 +444,35 @@ When something looks wrong on screen, run through this in order:
 These are **out of scope** for the current refactor and tracked here so
 they don't get lost. None blocks day-to-day development.
 
-- [ ] `LICENSE` — choose MIT / Apache-2.0 / proprietary, drop in repo root.
+- [ ] `LICENSE` — PolyForm Noncommercial 1.0.0, dropped in repo root.
+      Source-available, not OSI-approved; README must say "source-available",
+      not "open source".
+- [ ] Make GitHub repo public (after LICENSE lands).
 - [ ] `README.md` — what it is, screenshots in `docs/screenshots/`,
       requirements (macOS 26+), dev setup, architecture diagram.
-- [ ] `CHANGELOG.md` — Keep-a-Changelog format; first entry summarises the
-      May 2026 refactor.
-- [ ] `AppIcon.appiconset/*.png` — 10 files, 16×16@1x through 512×512@2x.
-      `Contents.json` already declares the filenames.
-- [ ] **Privacy Policy URL** — required by App Store even when nothing is
-      collected. GitHub Pages page is fine.
-- [ ] App Store Connect record + distribution certificate + W-8BEN.
-- [ ] App Store metadata (description, keywords, support URL, screenshots
-      2880×1800, category Developer Tools, age 4+).
+- [ ] Apple Developer Program enrollment ($99/year).
+- [ ] App Store Connect: Paid Applications Agreement, tax (W-8BEN as
+      non-US individual), banking.
+- [ ] App ID registered in Developer Portal with required capabilities.
+- [ ] Mac App Distribution certificate issued.
+- [ ] App Store Connect app record created (name, bundle ID, SKU,
+      primary language).
+- [ ] Privacy Policy hosted on GitHub Pages; URL set in App Store Connect.
+- [ ] First archive uploaded; Export Compliance answered.
+- [ ] TestFlight build distributed to internal testers (and external if
+      needed, after Beta App Review).
+- [ ] Pricing configured in App Store Connect: $5.00 / €6.00.
+- [ ] App Privacy questionnaire filled (no data collection).
+- [ ] Screenshots 2880×1800 in `docs/screenshots/`, uploaded.
+- [ ] App Store metadata (description, keywords, support URL, category
+      Developer Tools, age 4+).
 - [ ] App Review notes — explain `~/.claude/` access, Keychain
       credentials read, Anthropic API usage, demo token if reviewer needs
       one.
-- [ ] Decide on telemetry: MetricKit opt-in vs none.
-- [ ] Decide on update channel: App Store only vs notarised `.dmg` +
-      Sparkle (EdDSA-signed appcast).
+- [ ] `CHANGELOG.md` — Keep-a-Changelog format; first entry `1.0.0` with
+      key features. Written just before Submit.
+- [ ] Submit for App Review; respond to reviewer questions.
+- [ ] Generate promo codes for colleagues after approval.
 
 When tackling these, update this section in the same commit (turn `[ ]`
 into `[x]` or remove the row).
