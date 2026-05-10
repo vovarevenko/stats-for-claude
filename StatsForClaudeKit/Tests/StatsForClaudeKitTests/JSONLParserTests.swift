@@ -128,4 +128,70 @@ struct JSONLParserTests {
         """#.data(using: .utf8)!
         #expect(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "s2") == nil)
     }
+
+    @Test("malformed JSONL line is skipped, valid lines still produce a record")
+    func malformedLineSkipped() throws {
+        let jsonl = #"""
+        not-json-at-all
+        {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":10,"output_tokens":20}},"timestamp":"2026-05-01T10:00:00.000Z","sessionId":"sX"}
+        """#.data(using: .utf8)!
+        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "sX"))
+        #expect(record.messages.count == 1)
+        #expect(record.totalUsage.inputTokens == 10)
+        #expect(record.totalUsage.outputTokens == 20)
+    }
+
+    @Test("partial usage (only input/output) defaults missing fields to zero")
+    func partialUsageDefaultsToZero() throws {
+        let jsonl = #"""
+        {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":7,"output_tokens":9}},"timestamp":"2026-05-01T10:00:00.000Z","sessionId":"sP"}
+        """#.data(using: .utf8)!
+        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "sP"))
+        let usage = record.totalUsage
+        #expect(usage.inputTokens == 7)
+        #expect(usage.outputTokens == 9)
+        #expect(usage.cacheReadTokens == 0)
+        #expect(usage.cacheWriteTokens == 0)
+    }
+
+    @Test("multiple assistant messages with different models all parsed")
+    func mixedModelMessages() throws {
+        let jsonl = #"""
+        {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":1}},"timestamp":"2026-05-01T10:00:00.000Z","sessionId":"sM"}
+        {"message":{"role":"assistant","model":"claude-opus-4-7","usage":{"input_tokens":2,"output_tokens":2}},"timestamp":"2026-05-01T10:00:01.000Z","sessionId":"sM"}
+        {"message":{"role":"assistant","model":"claude-haiku-4-5-20251001","usage":{"input_tokens":3,"output_tokens":3}},"timestamp":"2026-05-01T10:00:02.000Z","sessionId":"sM"}
+        """#.data(using: .utf8)!
+        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "sM"))
+        #expect(record.messages.count == 3)
+        let models = Set(record.messages.map(\.model))
+        #expect(models == ["claude-sonnet-4-6", "claude-opus-4-7", "claude-haiku-4-5-20251001"])
+    }
+
+    @Test("ISO-8601 timestamp without fractional seconds is accepted")
+    func plainISOTimestampAccepted() throws {
+        let jsonl = #"""
+        {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":1}},"timestamp":"2026-05-01T10:00:00Z","sessionId":"sIso"}
+        """#.data(using: .utf8)!
+        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "sIso"))
+        #expect(record.messages.count == 1)
+    }
+
+    @Test("missing sessionId in JSONL falls back to provided default")
+    func sessionIdFallback() throws {
+        let jsonl = #"""
+        {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":1}},"timestamp":"2026-05-01T10:00:00.000Z"}
+        """#.data(using: .utf8)!
+        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "fallback-id"))
+        #expect(record.sessionId == "fallback-id")
+    }
+
+    @Test("empty encodedProjectPath produces Unknown projectName")
+    func emptyEncodedPathProducesUnknown() throws {
+        let jsonl = #"""
+        {"message":{"role":"assistant","model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":1}},"timestamp":"2026-05-01T10:00:00.000Z","sessionId":"sU"}
+        """#.data(using: .utf8)!
+        let record = try #require(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "sU"))
+        #expect(record.projectName == "Unknown")
+        #expect(record.encodedProjectPath == "")
+    }
 }

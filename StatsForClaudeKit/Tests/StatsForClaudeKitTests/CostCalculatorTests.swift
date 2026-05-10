@@ -95,6 +95,47 @@ struct CostCalculatorTests {
         #expect(abs(calc.costUSD(for: session) - 18.0) < 0.0001)
     }
 
+    @Test("cache_write only — sonnet")
+    func cacheWriteOnly() {
+        // 1M cache_write at $3.75/M = $3.75
+        let msg = message(model: "claude-sonnet-4-6", input: 0, output: 0, cacheWrite: 1_000_000)
+        #expect(abs(calc.costUSD(for: msg) - 3.75) < 0.0001)
+    }
+
+    @Test("unknown model is priced like sonnet")
+    func unknownModelPricedAsSonnet() {
+        let unknown = message(model: "claude-mystery", input: 1_000_000, output: 1_000_000)
+        let sonnet  = message(model: "claude-sonnet-4-6", input: 1_000_000, output: 1_000_000)
+        #expect(abs(calc.costUSD(for: unknown) - calc.costUSD(for: sonnet)) < 0.0001)
+    }
+
+    @Test("session with mixed model families sums per-model rates")
+    func mixedModelSessionCost() {
+        // Opus: 1M output @ $75/M = $75.00
+        // Haiku: 1M output @ $4/M  = $4.00
+        let session = SessionRecord(
+            sessionId: "mix",
+            encodedProjectPath: "-Users-test",
+            projectName: "test",
+            messages: [
+                message(model: "claude-opus-4-7",          input: 0, output: 1_000_000),
+                message(model: "claude-haiku-4-5-20251001", input: 0, output: 1_000_000),
+            ]
+        )
+        #expect(abs(calc.costUSD(for: session) - 79.0) < 0.0001)
+    }
+
+    @Test("empty session has zero cost")
+    func emptySessionZeroCost() {
+        let session = SessionRecord(
+            sessionId: "empty",
+            encodedProjectPath: "-x",
+            projectName: "x",
+            messages: []
+        )
+        #expect(calc.costUSD(for: session) == 0)
+    }
+
     // MARK: – Fixture integration
 
     @Test("sonnet fixture produces expected cost")
