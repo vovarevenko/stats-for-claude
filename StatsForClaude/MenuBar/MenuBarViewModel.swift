@@ -50,11 +50,6 @@ final class MenuBarViewModel {
         }
     }
 
-    func stop() {
-        refreshTask?.cancel()
-        refreshTask = nil
-    }
-
     func updateSettings(_ new: AppSettings) {
         settings = new
         SettingsStore.save(new)

@@ -37,8 +37,4 @@ public final class BookmarkStore: @unchecked Sendable {
         if stale { try? save(url: url) }
         return url
     }
-
-    public func clear() {
-        defaults.removeObject(forKey: key)
-    }
 }

@@ -29,19 +29,4 @@ public struct WidgetSnapshot: Codable, Equatable, Sendable {
         self.weekCostUSD = weekCostUSD
         self.topProject = topProject
     }
-
-    public var sessionTimeRemaining: TimeInterval {
-        sessionResetsAt.map { max(0, $0.timeIntervalSinceNow) } ?? 0
-    }
-
-    public var weekTimeRemaining: TimeInterval {
-        weekResetsAt.map { max(0, $0.timeIntervalSinceNow) } ?? 0
-    }
-
-    public static let empty = WidgetSnapshot(
-        updatedAt: .distantPast,
-        sessionPercent: 0, weekPercent: 0,
-        sessionResetsAt: nil, weekResetsAt: nil,
-        currentProject: "", weekCostUSD: 0, topProject: ""
-    )
 }

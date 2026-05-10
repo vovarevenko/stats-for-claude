@@ -20,9 +20,6 @@ public struct UsageWindow: Codable, Equatable, Sendable {
         case resetsAt = "resets_at"
     }
 
-    /// 0.0–1.0 fraction for ProgressView.
-    public var fraction: Double { min(1.0, utilization / 100.0) }
-
     public var timeRemaining: TimeInterval {
         resetsAt.map { max(0, $0.timeIntervalSinceNow) } ?? 0
     }

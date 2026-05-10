@@ -8,17 +8,12 @@ public final class UsageStore {
     // ── API-sourced (authoritative for % and reset times) ────────────────────
     public private(set) var apiResponse: UsageAPIResponse?
     public private(set) var apiDataAge: TimeInterval = 0
-    public private(set) var apiIsStale: Bool = false
-    public private(set) var apiError: String?
 
     // ── JSONL-sourced (cost + per-project breakdown) ──────────────────────────
-    public private(set) var allSessions: [SessionRecord] = []
     public private(set) var weeklyUsage: WeeklyUsage = .empty
     public private(set) var monthlyUsage: WeeklyUsage = .empty
-    public private(set) var dailyUsages: [DailyUsage] = []
 
     public private(set) var isLoading = false
-    public private(set) var loadError: String?
 
     private let appGroupStore: AppGroupStore
     private let bookmarkStore: BookmarkStore
@@ -88,16 +83,12 @@ public final class UsageStore {
             let response = try await UsageAPIClient().fetchUsage(token: token)
             apiResponse = response
             apiDataAge  = 0
-            apiIsStale  = false
-            apiError    = nil
             appGroupStore.save(response)
         } catch let error as APIError {
             if case .httpError(401) = error { invalidateToken() }
             loadCachedResponseIfNeeded()
-            apiError = error.localizedDescription
         } catch {
             loadCachedResponseIfNeeded()
-            apiError = error.localizedDescription
         }
     }
 
@@ -105,7 +96,6 @@ public final class UsageStore {
         guard let cached = appGroupStore.loadCachedAPIResponse() else { return }
         if apiResponse == nil { apiResponse = cached.response }
         apiDataAge = cached.age
-        apiIsStale = cached.isStale
     }
 
     private func resolveToken() throws -> String {
@@ -129,29 +119,19 @@ public final class UsageStore {
     }
 
     private func refreshJSONL(settings: AppSettings) async {
-        do {
-            guard let url = try bookmarkStore.resolve() else { return }
-            await loadJSONL(from: url, securityScoped: true, settings: settings)
-        } catch {
-            loadError = error.localizedDescription
-        }
+        guard let url = (try? bookmarkStore.resolve()) ?? nil else { return }
+        await loadJSONL(from: url, securityScoped: true, settings: settings)
     }
 
     private func loadJSONL(from url: URL, securityScoped: Bool, settings: AppSettings) async {
         let started = securityScoped && url.startAccessingSecurityScopedResource()
         defer { if started { url.stopAccessingSecurityScopedResource() } }
-        do {
-            let sessions = try await Task.detached(priority: .background) {
-                try JSONLParser().parseAllSessions(in: url)
-            }.value
-            let calc = CostCalculator()
-            allSessions = sessions
-            weeklyUsage = LimitCalculator.weeklyUsage(from: sessions, calculator: calc)
-            monthlyUsage = LimitCalculator.monthlyUsage(from: sessions, calculator: calc)
-            dailyUsages = LimitCalculator.dailyUsages(from: sessions, calculator: calc)
-        } catch {
-            loadError = error.localizedDescription
-        }
+        let sessions = (try? await Task.detached(priority: .background) {
+            try JSONLParser().parseAllSessions(in: url)
+        }.value) ?? []
+        let calc = CostCalculator()
+        weeklyUsage = LimitCalculator.weeklyUsage(from: sessions, calculator: calc)
+        monthlyUsage = LimitCalculator.monthlyUsage(from: sessions, calculator: calc)
     }
 
     private func publishSnapshot(settings: AppSettings) {

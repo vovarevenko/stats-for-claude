@@ -24,7 +24,6 @@ struct ProjectsTableView: View {
                 )
                 return ProjectRow(
                     id: project.id,
-                    name: project.name,
                     displayPath: suffixes[fullPath] ?? project.name,
                     fullPath: fullPath,
                     outputTokens: project.totalUsage.outputTokens,
@@ -181,7 +180,6 @@ private struct ValueBarCell: View {
 
 struct ProjectRow: Identifiable {
     let id: String
-    let name: String
     let displayPath: String
     let fullPath: String
     let outputTokens: Int

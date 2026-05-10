@@ -8,7 +8,6 @@ struct StatsForClaudeWidgetBundle: WidgetBundle {
     }
 }
 
-// Placeholder — full implementation in step 8
 struct StatsForClaudeWidget: Widget {
     let kind = "StatsForClaudeWidget"
 

@@ -22,14 +22,6 @@ public final class AppGroupStore: @unchecked Sendable {
         defaults?.set(data, forKey: snapshotKey)
     }
 
-    public func loadSnapshot() -> WidgetSnapshot {
-        guard
-            let data = defaults?.data(forKey: snapshotKey),
-            let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
-        else { return .empty }
-        return snapshot
-    }
-
     // MARK: – Cached API response (survives token expiry)
 
     public func save(_ response: UsageAPIResponse, fetchedAt: Date = .now) {
@@ -51,13 +43,5 @@ public final class AppGroupStore: @unchecked Sendable {
     public func save(_ settings: AppSettings) {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         defaults?.set(data, forKey: settingsKey)
-    }
-
-    public func loadSettings() -> AppSettings {
-        guard
-            let data = defaults?.data(forKey: settingsKey),
-            let settings = try? JSONDecoder().decode(AppSettings.self, from: data)
-        else { return .default }
-        return settings
     }
 }

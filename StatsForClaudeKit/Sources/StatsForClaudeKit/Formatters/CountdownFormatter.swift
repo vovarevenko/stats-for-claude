@@ -18,12 +18,4 @@ public enum CountdownFormatter {
             return "<1m"
         }
     }
-
-    /// Formats a Date as "resets at HH:mm".
-    public static func resetsAt(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.dateStyle = .none
-        return String(format: NSLocalizedString("resets_at_time", comment: ""), formatter.string(from: date))
-    }
 }

@@ -102,7 +102,7 @@ final class JSONLParserTests: XCTestCase {
         let url = fixture("session_sonnet.jsonl")
         let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project"))
 
-        let first = try XCTUnwrap(record.firstTimestamp)
+        let first = try XCTUnwrap(record.messages.first?.timestamp)
         let last  = try XCTUnwrap(record.lastTimestamp)
 
         // First message at 10:00:05, last at 10:10:15
