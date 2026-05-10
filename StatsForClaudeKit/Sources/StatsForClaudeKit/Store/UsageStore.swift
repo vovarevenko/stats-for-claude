@@ -19,23 +19,31 @@ public final class UsageStore {
     private let bookmarkStore: BookmarkResolving
     private let usageFetcher: UsageFetching
     private let keychain: KeychainTokenReading
+    private let tokenCache: TokenCacheStoring
 
-    // Token is cached in-memory AND in UserDefaults so the Keychain prompt
-    // fires only once across app launches (not on every startup).
-    private static let tokenDefaultsKey = "cachedClaudeAccessToken"
+    // In-memory mirror of the Keychain-cached token; avoids a Security framework
+    // round-trip on every refresh inside a single launch.
     private var cachedToken: String?
 
     public init(
         appGroupStore: AppGroupStore = .shared,
         bookmarkStore: BookmarkResolving = BookmarkStore(),
         usageFetcher: UsageFetching = UsageAPIClient(),
-        keychain: KeychainTokenReading = KeychainStore()
+        keychain: KeychainTokenReading = KeychainStore(),
+        tokenCache: TokenCacheStoring = KeychainTokenCache()
     ) {
         self.appGroupStore = appGroupStore
         self.bookmarkStore = bookmarkStore
         self.usageFetcher = usageFetcher
         self.keychain = keychain
+        self.tokenCache = tokenCache
+
+        // Sanitize: prior versions stored the OAuth token in plain text under
+        // UserDefaults.standard. Strip that leftover on first run after upgrade.
+        UserDefaults.standard.removeObject(forKey: Self.legacyDefaultsKey)
     }
+
+    private static let legacyDefaultsKey = "cachedClaudeAccessToken"
 
     public var hasBookmark: Bool { bookmarkStore.hasBookmark }
 
@@ -107,23 +115,25 @@ public final class UsageStore {
     }
 
     private func resolveToken() throws -> String {
-        // 1. In-memory (same launch)
+        // 1. In-memory (same launch).
         if let t = cachedToken { return t }
-        // 2. Persisted across launches — avoids Keychain prompt on every startup
-        if let t = UserDefaults.standard.string(forKey: Self.tokenDefaultsKey) {
+        // 2. Our Keychain cache — populated on the first successful read from
+        //    Claude Code's credentials item, survives relaunch silently.
+        if let t = tokenCache.readToken() {
             cachedToken = t
             return t
         }
-        // 3. Read from Keychain — shows system prompt once, then persists above
+        // 3. Read from Claude Code's Keychain item. macOS shows the access prompt
+        //    once; the resulting token is then mirrored into our own cache.
         let t = try keychain.readClaudeToken()
         cachedToken = t
-        UserDefaults.standard.set(t, forKey: Self.tokenDefaultsKey)
+        tokenCache.writeToken(t)
         return t
     }
 
     private func invalidateToken() {
         cachedToken = nil
-        UserDefaults.standard.removeObject(forKey: Self.tokenDefaultsKey)
+        tokenCache.deleteToken()
     }
 
     private func refreshJSONL(settings: AppSettings) async {
