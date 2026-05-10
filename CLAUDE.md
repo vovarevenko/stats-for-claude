@@ -444,7 +444,6 @@ When something looks wrong on screen, run through this in order:
 These are **out of scope** for the current refactor and tracked here so
 they don't get lost. None blocks day-to-day development.
 
-- [ ] Make GitHub repo public.
 - [ ] Apple Developer Program enrollment ($99/year).
 - [ ] App Store Connect: Paid Applications Agreement, tax (W-8BEN as
       non-US individual), banking.
@@ -452,8 +451,7 @@ they don't get lost. None blocks day-to-day development.
 - [ ] Mac App Distribution certificate issued.
 - [ ] App Store Connect app record created (name, bundle ID, SKU,
       primary language).
-- [ ] GitHub Pages enabled (Settings → Pages, source `dev /docs`).
-- [ ] Privacy Policy URL set in App Store Connect (once Pages live).
+- [ ] Privacy Policy URL set in App Store Connect: `https://vovarevenko.github.io/stats-for-claude/privacy.html`.
 - [ ] First archive uploaded; Export Compliance answered.
 - [ ] TestFlight build distributed to internal testers (and external if
       needed, after Beta App Review).
