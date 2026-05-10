@@ -45,22 +45,6 @@ targets:
     dependencies:
       - package: StatsForClaudeKit
 
-  StatsForClaudeWidget:
-    type: app-extension
-    platform: macOS
-    sources:
-      - StatsForClaudeWidget
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.revenko.stats-for-claude.widget
-        INFOPLIST_FILE: StatsForClaudeWidget/Info.plist
-        CODE_SIGN_ENTITLEMENTS: StatsForClaudeWidget/StatsForClaudeWidget.entitlements
-        ENABLE_APP_SANDBOX: YES
-    dependencies:
-      - package: StatsForClaudeKit
-      - target: StatsForClaude
-        embed: false
-
 schemes:
   StatsForClaude:
     build:
