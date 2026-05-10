@@ -263,6 +263,14 @@ it as its own commit with a migration path and a `BREAKING CHANGE` footer.
 - **Don't "fix" a red test by editing it.** A failing test is either a
   real regression or a test that captured the wrong contract; both
   outcomes need the human, not a quick rewrite.
+- **Swift Testing parameterized arguments — hoist to typed constants.**
+  When `@Test(arguments: [...])` contains tuples whose elements are
+  non-literal expressions (initializer calls like `TimeInterval(...)`,
+  integer arithmetic, etc.), the macro expansion blows the type-check
+  budget ("the compiler is unable to type-check this expression in
+  reasonable time"). Lift the array out to a `static let cases:
+  [(T, U)] = [...]` and pass it by name. `CountdownFormatterTests`
+  has the canonical pattern.
 
 ---
 
@@ -439,10 +447,11 @@ When something looks wrong on screen, run through this in order:
 
 ---
 
-## Pre-Release Checklist (deferred)
+## Pre-Release Checklist
 
-These are **out of scope** for the current refactor and tracked here so
-they don't get lost. None blocks day-to-day development.
+Path to v1.0.0 on the App Store. Items are listed in roughly the order
+they unblock each other; finish a row, delete it from this list in the
+same commit (don't mark `[x]`).
 
 - [ ] Apple Developer Program enrollment ($99/year).
 - [ ] App Store Connect: Paid Applications Agreement, tax (W-8BEN as
@@ -458,6 +467,8 @@ they don't get lost. None blocks day-to-day development.
 - [ ] Pricing configured in App Store Connect: $5.00 / €6.00.
 - [ ] App Privacy questionnaire filled (no data collection).
 - [ ] Screenshots 2880×1800 in `docs/screenshots/`, uploaded.
+- [ ] Hero screenshot `docs/screenshots/hero.png` referenced from README.
+- [ ] Architecture diagram (SVG, replaces ASCII fallback in README).
 - [ ] App Store metadata (description, keywords, support URL, category
       Developer Tools, age 4+).
 - [ ] App Review notes — explain `~/.claude/` access, Keychain
@@ -467,9 +478,6 @@ they don't get lost. None blocks day-to-day development.
       key features. Written just before Submit.
 - [ ] Submit for App Review; respond to reviewer questions.
 - [ ] Generate promo codes for colleagues after approval.
-
-When tackling these, update this section in the same commit (turn `[ ]`
-into `[x]` or remove the row).
 
 ---
 
