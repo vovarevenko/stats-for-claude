@@ -158,11 +158,16 @@ public final class UsageStore {
         // 2. Our Keychain cache — populated on the first successful read from
         //    Claude Code's credentials item, survives relaunch silently.
         if let t = tokenCache.readToken() {
+            log.debug("Token resolved from local Keychain cache")
             cachedToken = t
             return t
         }
         // 3. Read from Claude Code's Keychain item. macOS shows the access prompt
-        //    once; the resulting token is then mirrored into our own cache.
+        //    once; the resulting token is then mirrored into our own cache. If
+        //    the user picked "Allow" instead of "Always Allow" they will see the
+        //    prompt on every cold-start regardless — that's a Keychain ACL
+        //    decision macOS holds outside our control.
+        log.info("Token cache empty; reading Claude Code credentials")
         let t = try keychain.readClaudeToken()
         cachedToken = t
         tokenCache.writeToken(t)
