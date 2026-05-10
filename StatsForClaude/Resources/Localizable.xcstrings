@@ -73,6 +73,42 @@
         }
       }
     },
+    "overview_no_folder_title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Folder access required" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Нужен доступ к папке" } }
+      }
+    },
+    "overview_no_folder_hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stats for Claude needs read access to your ~/.claude folder to compute project breakdown and cost." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Stats for Claude нужен доступ на чтение к ~/.claude, чтобы посчитать стоимость и разбивку по проектам." } }
+      }
+    },
+    "overview_loading" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading usage data…" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Загружаем статистику…" } }
+      }
+    },
+    "overview_unavailable_title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load usage" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Не удалось загрузить статистику" } }
+      }
+    },
+    "overview_unavailable_hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "We can't reach the Anthropic API right now. Open Console.app and filter by org.revenko.stats-for-claude for details." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сейчас недоступен API Anthropic. Откройте Console.app и отфильтруйте по org.revenko.stats-for-claude — там подробности." } }
+      }
+    },
+    "try_again" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try again" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Повторить" } }
+      }
+    },
     "a11y_value_bar_cell" : {
       "comment" : "VoiceOver label for a numeric table cell. %@ is the formatted value, %lld is its share of the column total in percent.",
       "localizations" : {
