@@ -1,113 +1,131 @@
-import XCTest
+import Foundation
+import Testing
 @testable import StatsForClaudeKit
 
-final class JSONLParserTests: XCTestCase {
+@Suite("JSONLParser")
+struct JSONLParserTests {
     private let parser = JSONLParser()
 
-    private func fixture(_ name: String) -> URL {
-        Bundle.module.url(forResource: "Fixtures/\(name)", withExtension: nil)
-            ?? Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures")!
+    private func fixture(_ name: String) throws -> URL {
+        try #require(
+            Bundle.module.url(forResource: "Fixtures/\(name)", withExtension: nil)
+                ?? Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures")
+        )
     }
 
     // MARK: – Sonnet
 
-    func testSonnetParsesThreeMessages() throws {
-        let url = fixture("session_sonnet.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project"))
+    @Suite("Sonnet fixture")
+    struct Sonnet {
+        private let parser = JSONLParser()
 
-        XCTAssertEqual(record.messages.count, 3)
-        XCTAssertEqual(record.sessionId, "test-session-sonnet")
-    }
+        private func record() throws -> SessionRecord {
+            let url = try #require(
+                Bundle.module.url(forResource: "Fixtures/session_sonnet.jsonl", withExtension: nil)
+                    ?? Bundle.module.url(forResource: "session_sonnet.jsonl", withExtension: nil, subdirectory: "Fixtures")
+            )
+            let parsed = try parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project")
+            return try #require(parsed)
+        }
 
-    func testSonnetTotalTokens() throws {
-        let url = fixture("session_sonnet.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project"))
+        @Test("parses three messages with expected sessionId")
+        func parsesThreeMessages() throws {
+            let r = try record()
+            #expect(r.messages.count == 3)
+            #expect(r.sessionId == "test-session-sonnet")
+        }
 
-        let usage = record.totalUsage
-        // input: 10+15+5 = 30
-        XCTAssertEqual(usage.inputTokens, 30)
-        // output: 20+25+10 = 55
-        XCTAssertEqual(usage.outputTokens, 55)
-        // cacheWrite: 100+0+0 = 100
-        XCTAssertEqual(usage.cacheWriteTokens, 100)
-        // cacheRead: 50+150+200 = 400
-        XCTAssertEqual(usage.cacheReadTokens, 400)
-        // total: 30+55+100+400 = 585
-        XCTAssertEqual(usage.total, 585)
-    }
+        @Test("aggregates token totals across messages")
+        func totalTokens() throws {
+            let usage = try record().totalUsage
+            #expect(usage.inputTokens == 30)        // 10+15+5
+            #expect(usage.outputTokens == 55)       // 20+25+10
+            #expect(usage.cacheWriteTokens == 100)  // 100+0+0
+            #expect(usage.cacheReadTokens == 400)   // 50+150+200
+            #expect(usage.total == 585)
+        }
 
-    func testSonnetModelDetected() throws {
-        let url = fixture("session_sonnet.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project"))
+        @Test("all messages report sonnet model")
+        func modelDetected() throws {
+            #expect(try record().messages.allSatisfy { $0.model == "claude-sonnet-4-6" })
+        }
 
-        XCTAssertTrue(record.messages.allSatisfy { $0.model == "claude-sonnet-4-6" })
+        @Test("first vs last timestamp gap is 10m10s")
+        func timestampsParsed() throws {
+            let r = try record()
+            let first = try #require(r.messages.first?.timestamp)
+            let last = try #require(r.lastTimestamp)
+            #expect(first < last)
+            let gap = last.timeIntervalSince(first)
+            #expect(abs(gap - (10 * 60 + 10)) < 1.0)
+        }
     }
 
     // MARK: – Opus
 
-    func testOpusParsesToMessages() throws {
-        let url = fixture("session_opus.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-opus"))
+    @Suite("Opus fixture")
+    struct Opus {
+        private let parser = JSONLParser()
 
-        XCTAssertEqual(record.messages.count, 2)
-        XCTAssertEqual(record.sessionId, "test-session-opus")
-    }
+        private func record() throws -> SessionRecord {
+            let url = try #require(
+                Bundle.module.url(forResource: "Fixtures/session_opus.jsonl", withExtension: nil)
+                    ?? Bundle.module.url(forResource: "session_opus.jsonl", withExtension: nil, subdirectory: "Fixtures")
+            )
+            let parsed = try parser.parseSession(at: url, encodedProjectPath: "-Users-test-opus")
+            return try #require(parsed)
+        }
 
-    func testOpusTotalTokens() throws {
-        let url = fixture("session_opus.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-opus"))
+        @Test("parses two messages with expected sessionId")
+        func parsesTwoMessages() throws {
+            let r = try record()
+            #expect(r.messages.count == 2)
+            #expect(r.sessionId == "test-session-opus")
+        }
 
-        let usage = record.totalUsage
-        XCTAssertEqual(usage.inputTokens, 80)    // 50+30
-        XCTAssertEqual(usage.outputTokens, 180)  // 100+80
-        XCTAssertEqual(usage.cacheWriteTokens, 500) // 500+0
-        XCTAssertEqual(usage.cacheReadTokens, 900)  // 200+700
+        @Test("aggregates token totals")
+        func totalTokens() throws {
+            let usage = try record().totalUsage
+            #expect(usage.inputTokens == 80)        // 50+30
+            #expect(usage.outputTokens == 180)      // 100+80
+            #expect(usage.cacheWriteTokens == 500)  // 500+0
+            #expect(usage.cacheReadTokens == 900)   // 200+700
+        }
     }
 
     // MARK: – Haiku
 
-    func testHaikuParsesCorrectModel() throws {
-        let url = fixture("session_haiku.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-haiku"))
-
-        XCTAssertTrue(record.messages.allSatisfy { $0.model.contains("haiku") })
+    @Test("haiku fixture detects haiku model")
+    func haikuModelDetected() throws {
+        let url = try fixture("session_haiku.jsonl")
+        let parsed = try parser.parseSession(at: url, encodedProjectPath: "-Users-test-haiku")
+        let record = try #require(parsed)
+        #expect(record.messages.allSatisfy { $0.model.contains("haiku") })
     }
 
     // MARK: – Edge cases
 
-    func testEmptyFileReturnsNil() {
-        let data = "".data(using: .utf8)!
+    @Test("empty input returns nil")
+    func emptyFileReturnsNil() {
+        let data = Data()
         let record = parser.parseSession(from: data, encodedProjectPath: "", fallbackSessionId: "empty")
-        XCTAssertNil(record)
+        #expect(record == nil)
     }
 
-    func testSkipsNonAssistantRows() throws {
-        let jsonl = """
+    @Test("non-assistant rows are skipped (no record produced)")
+    func skipsNonAssistantRows() {
+        let jsonl = #"""
         {"type":"permission-mode","permissionMode":"default","sessionId":"s1"}
         {"message":{"role":"user","content":"hi"},"timestamp":"2026-05-01T10:00:00.000Z","sessionId":"s1"}
-        """.data(using: .utf8)!
-        let record = parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "s1")
-        XCTAssertNil(record)
+        """#.data(using: .utf8)!
+        #expect(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "s1") == nil)
     }
 
-    func testHandlesMissingUsageGracefully() {
-        let jsonl = """
+    @Test("missing usage field is handled gracefully")
+    func handlesMissingUsageGracefully() {
+        let jsonl = #"""
         {"message":{"role":"assistant","model":"claude-sonnet-4-6"},"timestamp":"2026-05-01T10:00:00.000Z","sessionId":"s2"}
-        """.data(using: .utf8)!
-        let record = parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "s2")
-        XCTAssertNil(record)
-    }
-
-    func testTimestampsAreParsedCorrectly() throws {
-        let url = fixture("session_sonnet.jsonl")
-        let record = try XCTUnwrap(parser.parseSession(at: url, encodedProjectPath: "-Users-test-my-project"))
-
-        let first = try XCTUnwrap(record.messages.first?.timestamp)
-        let last  = try XCTUnwrap(record.lastTimestamp)
-
-        // First message at 10:00:05, last at 10:10:15
-        XCTAssertLessThan(first, last)
-        let gap = last.timeIntervalSince(first)
-        XCTAssertEqual(gap, 10 * 60 + 10, accuracy: 1.0)
+        """#.data(using: .utf8)!
+        #expect(parser.parseSession(from: jsonl, encodedProjectPath: "", fallbackSessionId: "s2") == nil)
     }
 }

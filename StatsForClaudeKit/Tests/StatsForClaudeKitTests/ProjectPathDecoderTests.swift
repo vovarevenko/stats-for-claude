@@ -1,42 +1,42 @@
-import XCTest
+import Testing
 @testable import StatsForClaudeKit
 
-final class ProjectPathDecoderTests: XCTestCase {
+@Suite("ProjectPathDecoder")
+struct ProjectPathDecoderTests {
 
-    func testSimplePathDecoding() {
-        let decoded = ProjectPathDecoder.decodedPath(from: "-Users-john-Code-myapp")
-        XCTAssertEqual(decoded, "/Users/john/Code/myapp")
+    @Test("decodes simple encoded paths", arguments: [
+        ("-Users-john-Code-myapp", "/Users/john/Code/myapp"),
+        ("-Users-vovarevenko-Code-stats-for-claude", "/Users/vovarevenko/Code/stats/for/claude"),
+    ])
+    func decodesSimplePaths(encoded: String, expected: String) {
+        #expect(ProjectPathDecoder.decodedPath(from: encoded) == expected)
     }
 
-    func testLeadingDashStripped() {
+    @Test("leading dash becomes leading slash")
+    func leadingDashStripped() {
         let decoded = ProjectPathDecoder.decodedPath(from: "-Users-john-Desktop")
-        XCTAssertTrue(decoded.hasPrefix("/"))
+        #expect(decoded.hasPrefix("/"))
     }
 
-    func testProjectNameSimple() {
-        let name = ProjectPathDecoder.projectName(from: "-Users-john-Code-myapp")
-        XCTAssertEqual(name, "myapp")
+    @Test("project name from simple encoded path")
+    func projectNameSimple() {
+        #expect(ProjectPathDecoder.projectName(from: "-Users-john-Code-myapp") == "myapp")
     }
 
-    func testProjectNameDeepPath() {
-        let name = ProjectPathDecoder.projectName(from: "-Users-john-Code-work-api-server")
-        // Without filesystem resolution last component of naive decode
-        XCTAssertFalse(name.isEmpty)
+    @Test("project name from deep encoded path is non-empty")
+    func projectNameDeepPath() {
+        // Without filesystem resolution, last component of naive decode is returned.
+        #expect(!ProjectPathDecoder.projectName(from: "-Users-john-Code-work-api-server").isEmpty)
     }
 
-    func testEmptyInputReturnsUnknown() {
-        let name = ProjectPathDecoder.projectName(from: "")
-        XCTAssertEqual(name, "Unknown")
+    @Test("empty input returns Unknown")
+    func emptyInputReturnsUnknown() {
+        #expect(ProjectPathDecoder.projectName(from: "") == "Unknown")
     }
 
-    func testKnownProjectsDirectoryName() {
-        // The encoded name from the real ~/.claude/projects directory
-        let encoded = "-Users-vovarevenko-Code-stats-for-claude"
-        let decoded = ProjectPathDecoder.decodedPath(from: encoded)
-        XCTAssertEqual(decoded, "/Users/vovarevenko/Code/stats/for/claude") // naive decode
-        // project name would be wrong for hyphenated dirs without filesystem resolution
-        // This test documents the known limitation
-        let name = ProjectPathDecoder.projectName(from: encoded)
-        XCTAssertFalse(name.isEmpty)
+    @Test("hyphenated directory name is non-empty (known limitation)")
+    func hyphenatedKnownLimitation() {
+        // Documents the naive-decode limitation for hyphenated dirs without filesystem resolution.
+        #expect(!ProjectPathDecoder.projectName(from: "-Users-vovarevenko-Code-stats-for-claude").isEmpty)
     }
 }

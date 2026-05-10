@@ -1,9 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import StatsForClaudeKit
 
-final class LimitCalculatorTests: XCTestCase {
-
-    // MARK: – Helpers
+@Suite("LimitCalculator")
+struct LimitCalculatorTests {
 
     private func makeMessage(
         timestamp: Date,
@@ -26,24 +26,23 @@ final class LimitCalculatorTests: XCTestCase {
         )
     }
 
-    // MARK: – Weekly usage
-
-    func testWeeklyUsageIncludesRecentSessions() {
+    @Test("weekly usage includes sessions newer than 7 days")
+    func weeklyUsageIncludesRecentSessions() {
         let now = Date()
         let recent = makeSession(messages: [makeMessage(timestamp: now.addingTimeInterval(-3600))])
         let old = makeSession(messages: [makeMessage(timestamp: now.addingTimeInterval(-8 * 24 * 3600))])
 
         let weekly = LimitCalculator.weeklyUsage(from: [recent, old], now: now)
-
-        XCTAssertEqual(weekly.projectBreakdown.count, 1)
+        #expect(weekly.projectBreakdown.count == 1)
     }
 
-    func testWeeklyUsageExcludesOldSessions() {
+    @Test("weekly usage excludes sessions older than 7 days")
+    func weeklyUsageExcludesOldSessions() {
         let now = Date()
         let old = makeSession(messages: [makeMessage(timestamp: now.addingTimeInterval(-8 * 24 * 3600))])
 
         let weekly = LimitCalculator.weeklyUsage(from: [old], now: now)
-        XCTAssertEqual(weekly.projectBreakdown.count, 0)
-        XCTAssertEqual(weekly.totalUsage.total, 0)
+        #expect(weekly.projectBreakdown.count == 0)
+        #expect(weekly.totalUsage.total == 0)
     }
 }
