@@ -1,0 +1,487 @@
+# Stats for Claude
+
+> Single-repo macOS app. Living document — when an invariant in this file
+> goes out of date, fix the file in the same commit that broke it.
+
+---
+
+## What This Is
+
+A native macOS menu-bar app that surfaces Claude Code usage:
+
+- 5-hour session and weekly utilisation percentages.
+- Per-project breakdown of monthly cost (subscription price amortised by
+  output-token share).
+- Updates silently every minute (API) and every five minutes (JSONL parse).
+
+Strictly local: reads `~/.claude/projects/*.jsonl` via a security-scoped
+bookmark and calls `https://api.anthropic.com/api/oauth/usage` with the
+OAuth token from Claude Code CLI's Keychain. Nothing is ever uploaded.
+
+The widget target was excised before this iteration shipped; it returns in
+v2 and the model layer (`WidgetSnapshot`, `AppGroupStore.save`) is already
+in place for that.
+
+---
+
+## Architecture
+
+### Modules — direction of dependency is one-way
+
+```
+StatsForClaude          (app target — SwiftUI views, @main, scenes)
+        │
+        ▼
+StatsForClaudeAppKit    (view-models, app-level stores)
+        │
+        ▼
+StatsForClaudeKit       (models, parsers, IO clients, formatters, logging)
+```
+
+`StatsForClaudeAppKit` is a separate library target inside the same SPM
+package so `swift test` can exercise `MenuBarViewModel` and `SettingsStore`
+with `@testable import`. The app target is intentionally thin — adding
+business logic to it is a smell; lift it down a layer.
+
+### IO surface — protocol-fronted
+
+| Protocol | Production impl | Used by |
+| --- | --- | --- |
+| `UsageFetching` | `UsageAPIClient` | `UsageStore.refreshAPI` |
+| `KeychainTokenReading` | `KeychainStore` (`Claude Code-credentials`) | `UsageStore.resolveToken` |
+| `BookmarkResolving` | `BookmarkStore` | `UsageStore.refreshJSONL`, `MenuBarViewModel.needsOnboarding` |
+| `TokenCacheStoring` | `KeychainTokenCache` (own service) | `UsageStore.resolveToken` |
+| `SettingsPersisting` | `SettingsStore` | `MenuBarViewModel.updateSettings` |
+
+Everything that reaches the network, Keychain, file system, or
+`UserDefaults` goes through one of these protocols. **New IO must do the
+same** — never instantiate concrete IO types inside business logic.
+
+### Refresh cadences
+
+- API: 60 s (cheap, one HTTP request).
+- JSONL: 300 s (heavy, file enumeration).
+
+Two independent timers in `MenuBarViewModel.start()`. Don't merge them —
+running the JSONL parser every minute is what the previous version did and
+that was wrong.
+
+### State model
+
+`UsageStore` is `@Observable @MainActor`. `apiInFlight` and `jsonlInFlight`
+are private flags; `isLoading` is a computed OR projection for UI binding.
+
+`OverviewTabView` derives a four-case `State` enum
+(`needsOnboarding` / `loading` / `unavailable` / `ready`) from the VM
+instead of letting individual subviews render zero values when there's no
+data. Reuse this pattern for new screens.
+
+---
+
+## Tech Stack
+
+| Component | Decision |
+| --- | --- |
+| UI | SwiftUI; AppKit only for `NSOpenPanel`, `NSApp`, `NSViewRepresentable` |
+| State | `@Observable` (Observation framework), not `@ObservableObject` |
+| Concurrency | Strict (`SWIFT_STRICT_CONCURRENCY: complete`); structured `Task`, `MainActor.run` for re-entry |
+| Logging | `os.Logger` under subsystem `org.revenko.stats-for-claude` |
+| Persistence | Keychain (token cache + Claude Code creds), App Group `UserDefaults` (cached API response, snapshot, settings mirror), security-scoped bookmark |
+| Localization | `Localizable.xcstrings` (en + ru), patched into Xcode project by `scripts/add_xcstrings.py` |
+| Parsing | `JSONDecoder.iso8601WithOptionalMillis()` — handles both API (millis) and JSONL (no millis) date strings |
+| Tests | Swift Testing (`@Test`, `#expect`, `#require`) — not XCTest |
+
+**Why protocol-fronted IO instead of actors:** the IO layer is thin and the
+view-models are already `@MainActor`. Promoting stores to actors buys
+nothing and complicates SwiftUI binding.
+
+**Why `@unchecked Sendable` on stores:** `UserDefaults` and the Security
+framework are documented thread-safe but not annotated `Sendable`. Every
+such conformance carries a comment justifying it; new ones must too.
+
+---
+
+## Repository Structure
+
+```
+stats-for-claude/
+  project.yml                    ← xcodegen source of truth
+  Makefile                       ← gen / test / lint / format / clean
+  scripts/add_xcstrings.py       ← post-xcodegen patch for Localizable.xcstrings
+  .swiftlint.yml                 ← root config; nested override in Tests/
+  .swiftformat
+  .github/workflows/ci.yml
+  PROMPT.md                      ← historical refactor brief (May 2026)
+  CLAUDE.md                      ← this file
+
+  StatsForClaude/                ← app target
+    StatsForClaudeApp.swift      ← @main, scenes, MenuBarLabelView
+    Dashboard/                   ← TabView, Overview, History, Settings tabs
+    MenuBar/                     ← popover and HIToolbox window glue
+    Onboarding/                  ← welcome → success/failed phases
+    Settings/                    ← form, Claude directory picker
+    Resources/
+      Info.plist
+      Localizable.xcstrings
+      PrivacyInfo.xcprivacy
+      StatsForClaude.entitlements
+      Assets.xcassets/           ← AccentColor + AppIcon scaffolding (no PNGs yet)
+
+  StatsForClaudeKit/
+    Package.swift                ← two products: StatsForClaudeKit, StatsForClaudeAppKit
+    Sources/
+      StatsForClaudeKit/
+        API/                     ← UsageAPIClient, UsageAPIResponse, CachedAPIResponse
+        Formatters/              ← TokenFormatter, CountdownFormatter
+        Limits/                  ← LimitCalculator, PlanLimits
+        Logging/                 ← Log.make(_:)
+        Models/                  ← AppSettings, SessionRecord, WidgetSnapshot, etc.
+        Parser/                  ← JSONLParser, ProjectPathDecoder, JSONDecoder+ISO8601
+        Pricing/                 ← Pricing, CostCalculator
+        Store/                   ← AppGroupStore, BookmarkStore, KeychainStore, TokenCache, UsageStore
+      StatsForClaudeAppKit/
+        MenuBarViewModel.swift   ← public; DashboardTab here
+        SettingsStore.swift      ← SettingsPersisting
+    Tests/
+      .swiftlint.yml             ← test-folder rule overrides
+      StatsForClaudeKitTests/    ← kit unit tests + golden Codable fixtures
+      StatsForClaudeAppKitTests/ ← VM/store fakes + state transitions
+```
+
+---
+
+## Identifiers
+
+| Slot | Value | Where it must match |
+| --- | --- | --- |
+| Bundle ID (app) | `org.revenko.stats-for-claude` | `project.yml`, App Store Connect |
+| Apple Team ID | `4DDDLR4X3X` | `project.yml`, both entitlements files |
+| App Group ID | `4DDDLR4X3X.group.org.revenko.stats-for-claude` | `AppGroupStore.appGroupID`, app entitlements (and future widget entitlements) |
+| Token-cache Keychain service | `org.revenko.stats-for-claude.token-cache` | `KeychainTokenCache.defaultService` only |
+| Logger subsystem | `org.revenko.stats-for-claude` | `Log.subsystem` |
+
+When Bundle ID changes, **all five rows above** have to move together. This
+is one reason tests use ephemeral `UserDefaults(suiteName:)` and not the
+real App Group container.
+
+---
+
+## Entitlements
+
+App target needs all of:
+
+- `com.apple.security.app-sandbox`
+- `com.apple.security.files.user-selected.read-only` — for `~/.claude` bookmark.
+- `com.apple.security.files.bookmarks.app-scope` — for storing the bookmark.
+- `com.apple.security.network.client` — for Anthropic API.
+- `com.apple.security.application-groups` — single entry, see table above.
+
+**Don't** add `files.all`, `apple-events`, or audio/camera entitlements.
+The app doesn't need them and any extra entitlement raises the App Review
+bar.
+
+---
+
+## Conventions
+
+### Logging
+
+- Production code: `os.Logger`, never `print`.
+- One logger per file/category: `private let log = Log.make("Component")`.
+- Levels: `.error` for handled failures, `.info` for lifecycle, `.debug` for
+  trace.
+- **Never** log tokens, bookmark URLs, raw API bodies, or parsed message
+  contents. Use `privacy: .public` only for error descriptions.
+
+To inspect logs:
+
+```bash
+log stream --predicate 'subsystem == "org.revenko.stats-for-claude"' --level debug
+```
+
+### Localization
+
+Every user-facing string lives in `Localizable.xcstrings` with an `en`
+value (and ideally `ru`). Use `String(localized: "key")` for free-form text
+and `Text(LocalizedStringKey)` inside SwiftUI when a single literal works.
+
+`Text("…")` with a String **variable** is *not* localized — wrap the source
+string with `String(localized:)` first or pass `LocalizedStringKey`.
+
+VoiceOver labels use the `a11y_*` key prefix and a `.combine`d
+`.accessibilityElement` modifier. Decorative SF Symbols are
+`.accessibilityHidden(true)`.
+
+### Error handling
+
+- `try?` is reserved for cases where we *genuinely* don't care
+  (e.g. invalidating a stale bookmark, encoding for non-critical caches).
+- Anywhere a failure should reach the user, use `do/catch` and log via the
+  module's `Logger`.
+- `APIError` is `LocalizedError`; add cases instead of stringly-typed
+  errors.
+
+### Magic numbers
+
+Named constants on the type that owns them. Live examples to mirror:
+
+- `MenuBarViewModel.apiRefreshInterval`, `.jsonlRefreshInterval`
+- `CachedAPIResponse.staleAfter`
+- `MenuBarPopoverView.stalenessHintThreshold`
+- `LimitCalculator.weekDuration`
+
+### Wire format
+
+Codable models in `Tests/StatsForClaudeKitTests/ModelsCodableTests.swift`
+are golden fixtures. Editing them = changing on-disk format for users.
+**Don't update fixtures casually**; if a wire change is intentional, ship
+it as its own commit with a migration path and a `BREAKING CHANGE` footer.
+
+---
+
+## Testing
+
+- Run with `make test` (= `cd StatsForClaudeKit && swift test`).
+- Two test bundles: `StatsForClaudeKitTests` (pure logic + Codable goldens)
+  and `StatsForClaudeAppKitTests` (VM/store transitions through fakes in
+  `Fakes.swift`).
+- Each App Group test creates a unique `UserDefaults(suiteName:)` and tears
+  it down via `removePersistentDomain` in `defer`.
+- Two test seams (`UsageStore.refreshAPIInternal`, `.refreshJSONLInternal`)
+  are `internal` on purpose — drive them directly from tests instead of
+  polling the spawned `Task`.
+- Performance budgets live in `PerformanceTests.swift` with
+  `.timeLimit(.minutes(1))` — meant to catch O(n²) regressions, not
+  microsecond drift.
+- **Adding a new IO dependency** to `UsageStore` or a view-model: protocol
+  it, default-init it to the production impl, fake it in `Fakes.swift`,
+  cover the state transition.
+- **If a refactor makes a tested member `private` and `@testable import`
+  breaks**, raise the visibility to `internal` (or `package`) — don't
+  delete the test. Two such seams already exist
+  (`UsageStore.refreshAPIInternal`, `.refreshJSONLInternal`).
+- **Don't "fix" a red test by editing it.** A failing test is either a
+  real regression or a test that captured the wrong contract; both
+  outcomes need the human, not a quick rewrite.
+
+---
+
+## Build & Dev Workflow
+
+| Want to | Run |
+| --- | --- |
+| Generate `.xcodeproj` after adding/removing files | `make gen` |
+| Run all unit tests | `make test` |
+| Lint | `make lint` (needs `brew install swiftlint`) |
+| Auto-format | `make format` (needs `brew install swiftformat`) |
+| CI-style check (no writes) | `make format-check && make lint` |
+| Clean build artefacts | `make clean` |
+| Open the app | `open StatsForClaude.xcodeproj` → Cmd+R |
+
+`make gen` is **only** needed when the file list changes. Day-to-day
+edits: run from Xcode with Cmd+R.
+
+The Xcode project file is generated and committed (xcodegen). The
+`scripts/add_xcstrings.py` post-action injects the localization catalog.
+If the project file looks wrong, regenerate before debugging.
+
+### After Making Changes — What to Rebuild
+
+| Changed | What gets rebuilt |
+| --- | --- |
+| `StatsForClaudeKit/Sources/StatsForClaudeKit/**` | Both kit modules + app, via SPM |
+| `StatsForClaudeKit/Sources/StatsForClaudeAppKit/**` | AppKit module + app |
+| `StatsForClaude/**` | App target only |
+| `project.yml` / new `.swift` files | `make gen` first, then build |
+| `Localizable.xcstrings` | Picked up automatically; no `make gen` |
+| `Resources/*.entitlements`, `Info.plist`, `PrivacyInfo.xcprivacy` | App rebuild + re-sign |
+
+---
+
+## Conventional Commits
+
+Format: `<type>(<scope>): <imperative subject ≤72 chars>`.
+
+`type` ∈ {`feat`, `fix`, `refactor`, `chore`, `test`, `docs`, `style`,
+`perf`, `build`, `ci`, `i18n`, `a11y`}.
+
+`scope` ∈ {`kit`, `app`, `parser`, `api`, `store`, `ui`, `settings`,
+`onboarding`, `build`, `ci`, `deps`, `security`}.
+
+Body explains **why**, not what — the diff already shows what. Use HEREDOC
+for multi-line messages so newlines survive:
+
+```bash
+git commit -m "$(cat <<'EOF'
+refactor(kit): one-line summary
+
+Body with paragraphs, ~72 chars wrap.
+EOF
+)"
+```
+
+Hard rules:
+
+- **No `Co-Authored-By: Claude` trailer.**
+- No `--no-verify`, no `--amend` for pushed commits, no `push --force` to
+  `main`/`master`.
+- Stage by name (`git add path/to/file`), never `-A` or `.` — keeps
+  `.env`, build artefacts, screenshots out of commits.
+- Wire-format breaking change → add `BREAKING CHANGE:` footer and ship a
+  migration in the same commit.
+- One atomic change per commit. `swift test` must stay green at every
+  commit on the branch.
+
+If a pre-commit hook fails, fix the cause and create a **new** commit; do
+not amend. Amend on a hook-failed commit modifies the previous one and can
+delete in-flight work.
+
+### When to stop and ask the human
+
+- Any change to a Codable wire format (the models in `ModelsCodableTests`
+  golden fixtures).
+- Removing a `public` API, even if it has no in-tree callers.
+- Picking a license, choosing telemetry SDKs, changing distribution
+  channels (App Store vs notarised `.dmg`).
+- Anything that materially deviates from the plan agreed for the current
+  session.
+
+### When to just do it
+
+- Renaming internal identifiers, extracting constants, replacing `print`
+  with `Logger`, fixing lint warnings.
+- Adding tests against an already-protocol-fronted IO seam.
+- Tightening `try?` to `do/catch` + log when the failure is user-visible.
+
+---
+
+## CI
+
+`.github/workflows/ci.yml` runs two jobs on `macos-15`:
+
+1. `swift test --parallel` (with SPM build cache).
+2. `swiftlint --strict` + `swiftformat --lint .`.
+
+`xcodebuild` of the app target is **not** in CI yet — the app deploys to
+macOS 26 and the runner image is on Xcode 16. When the GitHub `macos-26`
+runner ships, add a third job calling `xcodebuild -scheme StatsForClaude
+-destination 'platform=macOS' build`.
+
+---
+
+## Pre-Commit Mental Checklist
+
+Before every commit:
+
+- [ ] `swift test` green.
+- [ ] `xcodebuild build` of the app target succeeds (only if Swift sources
+      changed).
+- [ ] `make format-check && make lint` pass.
+- [ ] Commit message follows the format above; body explains *why*.
+- [ ] No new `print()`, no new `try?` swallowing user-visible failures, no
+      new `@unchecked Sendable` without a comment.
+- [ ] If you added a new user-facing string: it's in
+      `Localizable.xcstrings` with `en` and ideally `ru`.
+- [ ] If you added a new IO dependency to a store/VM: it's protocol-fronted
+      and faked in tests.
+
+If any of these doesn't hold, fix it in the same commit. Don't open a PR
+saying "lint will be fixed in a follow-up" — there are no follow-ups.
+
+---
+
+## Architectural Pitfalls
+
+- **`@unchecked Sendable` without a comment is a smell.** Three stores
+  carry it (`AppGroupStore`, `BookmarkStore`, `KeychainStore`,
+  `SettingsStore`) and each comment cites the docs that justify it. New
+  ones must do the same.
+- **Don't read `Claude Code-credentials` from a hot path.** macOS shows an
+  ACL prompt the first time and again on every cold start unless the user
+  hits "Always Allow" — which we don't control. Always go through
+  `TokenCacheStoring` first; the chain is in-memory → our Keychain item →
+  Claude Code's Keychain item, in that order.
+- **App Sandbox + bookmark lifecycle.** A URL resolved from a security
+  bookmark is only readable inside
+  `startAccessingSecurityScopedResource() … stopAccessingSecurityScopedResource()`.
+  `UsageStore.loadJSONL` sets `securityScoped: false` for the onboarding
+  path (URL is fresh from `NSOpenPanel`) and `true` for the steady-state
+  path; new code that touches `~/.claude/` must follow that pattern.
+- **`ISO8601DateFormatter` is non-Sendable.** Use the shared decoder
+  factory `JSONDecoder.iso8601WithOptionalMillis()` — don't roll your own
+  inline; the `nonisolated(unsafe)` formatters live in
+  `JSONDecoder+ISO8601.swift`.
+- **App Group container is shared with future widget v2.** Don't write
+  anything into it that the widget shouldn't see, even if no consumer
+  exists yet.
+- **macOS 26: `Text + Text` is deprecated.** Use
+  `Text("\(Text(part).foregroundStyle(...))rest")` interpolation.
+
+---
+
+## Testing the App End-to-End
+
+When something looks wrong on screen, run through this in order:
+
+1. `log stream --predicate 'subsystem == "org.revenko.stats-for-claude"' --level debug`
+2. Confirm the right binary is running:
+   `ps aux | grep StatsForClaude | grep -v grep` — pid + executable path
+   should be in `~/Library/Developer/Xcode/DerivedData/StatsForClaude-*/`,
+   not `/Applications/` (the latter is a stale prebuilt copy).
+3. Reset state for clean-launch testing:
+   ```bash
+   security delete-generic-password -s "org.revenko.stats-for-claude.token-cache" -a "claude-oauth"
+   defaults delete org.revenko.stats-for-claude 2>/dev/null
+   defaults delete 4DDDLR4X3X.group.org.revenko.stats-for-claude 2>/dev/null
+   ```
+4. Quit (`⌘Q` from menu — closing the dashboard window doesn't quit a
+   `LSUIElement` app) and relaunch from Xcode.
+
+---
+
+## Pre-Release Checklist (deferred)
+
+These are **out of scope** for the current refactor and tracked here so
+they don't get lost. None blocks day-to-day development.
+
+- [ ] `LICENSE` — choose MIT / Apache-2.0 / proprietary, drop in repo root.
+- [ ] `README.md` — what it is, screenshots in `docs/screenshots/`,
+      requirements (macOS 26+), dev setup, architecture diagram.
+- [ ] `CHANGELOG.md` — Keep-a-Changelog format; first entry summarises the
+      May 2026 refactor.
+- [ ] `AppIcon.appiconset/*.png` — 10 files, 16×16@1x through 512×512@2x.
+      `Contents.json` already declares the filenames.
+- [ ] **Privacy Policy URL** — required by App Store even when nothing is
+      collected. GitHub Pages page is fine.
+- [ ] App Store Connect record + distribution certificate + W-8BEN.
+- [ ] App Store metadata (description, keywords, support URL, screenshots
+      2880×1800, category Developer Tools, age 4+).
+- [ ] App Review notes — explain `~/.claude/` access, Keychain
+      credentials read, Anthropic API usage, demo token if reviewer needs
+      one.
+- [ ] Decide on telemetry: MetricKit opt-in vs none.
+- [ ] Decide on update channel: App Store only vs notarised `.dmg` +
+      Sparkle (EdDSA-signed appcast).
+
+When tackling these, update this section in the same commit (turn `[ ]`
+into `[x]` or remove the row).
+
+---
+
+## Backlog
+
+Items previously evaluated and intentionally deferred:
+
+- **Widget v2** — small + medium families reading `WidgetSnapshot` from
+  the App Group, plus snapshot tests via `pointfreeco/swift-snapshot-testing`.
+  Model layer is already in place; just needs view + entitlements +
+  target.
+- **Real-data fixtures** — obfuscated samples from `~/.claude/projects/`
+  in `Tests/StatsForClaudeKitTests/Fixtures/real_*/` for edge cases the
+  synthetic JSONL doesn't cover.
+- **Backward-compat fixtures** — the moment any wire format
+  (`AppSettings`, `WidgetSnapshot`, `SessionRecord`) is changed, add a
+  golden fixture of the *old* version to `ModelsCodableTests` plus a
+  decode-via-migration test.
+- **macOS 26 CI runner** — add `xcodebuild` of the app target as a third
+  job once GitHub ships `macos-26`.
