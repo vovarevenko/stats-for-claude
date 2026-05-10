@@ -37,11 +37,28 @@ struct TokenFormatterTests {
 
 @Suite("CountdownFormatter")
 struct CountdownFormatterTests {
-    @Test("zero or negative interval renders em-dash", arguments: [
-        TimeInterval(0),
-        TimeInterval(-1),
-        TimeInterval(-3600),
-    ])
+    static let zeroOrNegativeCases: [TimeInterval] = [0, -1, -3600]
+
+    static let minutesOnlyCases: [(TimeInterval, String)] = [
+        (60, "1m"),
+        (15 * 60, "15m"),
+        (59 * 60 + 59, "59m"),
+    ]
+
+    static let hoursAndMinutesCases: [(TimeInterval, String)] = [
+        (3600, "1h 0m"),
+        (2 * 3600 + 15 * 60, "2h 15m"),
+        (23 * 3600 + 59 * 60, "23h 59m"),
+    ]
+
+    static let daysAndHoursCases: [(TimeInterval, String)] = [
+        (86400, "1d"),
+        (86400 + 3600, "1d 1h"),
+        (2 * 86400 + 5 * 3600, "2d 5h"),
+        (7 * 86400, "7d"),
+    ]
+
+    @Test("zero or negative interval renders em-dash", arguments: zeroOrNegativeCases)
     func zeroOrNegative(interval: TimeInterval) {
         #expect(CountdownFormatter.format(interval) == "—")
     }
@@ -52,30 +69,17 @@ struct CountdownFormatterTests {
         #expect(CountdownFormatter.format(59) == "<1m")
     }
 
-    @Test("minutes-only", arguments: [
-        (TimeInterval(60), "1m"),
-        (TimeInterval(15 * 60), "15m"),
-        (TimeInterval(59 * 60 + 59), "59m"),
-    ])
+    @Test("minutes-only", arguments: minutesOnlyCases)
     func minutesOnly(interval: TimeInterval, expected: String) {
         #expect(CountdownFormatter.format(interval) == expected)
     }
 
-    @Test("hours and minutes under 1 day", arguments: [
-        (TimeInterval(3600), "1h 0m"),
-        (TimeInterval(2 * 3600 + 15 * 60), "2h 15m"),
-        (TimeInterval(23 * 3600 + 59 * 60), "23h 59m"),
-    ])
+    @Test("hours and minutes under 1 day", arguments: hoursAndMinutesCases)
     func hoursAndMinutes(interval: TimeInterval, expected: String) {
         #expect(CountdownFormatter.format(interval) == expected)
     }
 
-    @Test("days plus hours", arguments: [
-        (TimeInterval(86400), "1d"),
-        (TimeInterval(86400 + 3600), "1d 1h"),
-        (TimeInterval(2 * 86400 + 5 * 3600), "2d 5h"),
-        (TimeInterval(7 * 86400), "7d"),
-    ])
+    @Test("days plus hours", arguments: daysAndHoursCases)
     func daysAndHours(interval: TimeInterval, expected: String) {
         #expect(CountdownFormatter.format(interval) == expected)
     }
