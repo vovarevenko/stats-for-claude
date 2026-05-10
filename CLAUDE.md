@@ -444,10 +444,7 @@ When something looks wrong on screen, run through this in order:
 These are **out of scope** for the current refactor and tracked here so
 they don't get lost. None blocks day-to-day development.
 
-- [ ] `LICENSE` — PolyForm Noncommercial 1.0.0, dropped in repo root.
-      Source-available, not OSI-approved; README must say "source-available",
-      not "open source".
-- [ ] Make GitHub repo public (after LICENSE lands).
+- [ ] Make GitHub repo public.
 - [ ] `README.md` — what it is, screenshots in `docs/screenshots/`,
       requirements (macOS 26+), dev setup, architecture diagram.
 - [ ] Apple Developer Program enrollment ($99/year).
