@@ -1,9 +1,15 @@
 import Foundation
 
 /// Shared UserDefaults bridge between the main app and the Widget Extension.
+///
+/// `@unchecked Sendable` is sound: `UserDefaults` is documented as thread-safe
+/// and all stored properties are immutable.
 public final class AppGroupStore: @unchecked Sendable {
     public static let shared = AppGroupStore()
 
+    /// Must match the value of `com.apple.security.application-groups` in both
+    /// `StatsForClaude.entitlements` and the (future) widget entitlements file.
+    /// The `4DDDLR4X3X.` prefix is the Apple Team ID.
     public static let appGroupID = "4DDDLR4X3X.group.org.revenko.stats-for-claude"
 
     private let defaults: UserDefaults?

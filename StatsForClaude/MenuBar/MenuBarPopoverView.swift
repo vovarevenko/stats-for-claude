@@ -2,6 +2,10 @@ import SwiftUI
 import StatsForClaudeKit
 
 struct MenuBarPopoverView: View {
+    /// Don't bother showing the "Updated Xm ago" line if the data is fresher
+    /// than this — the user already sees the live numbers above.
+    private static let stalenessHintThreshold: TimeInterval = 300
+
     @Environment(\.openWindow) private var openWindow
     @Environment(MenuBarViewModel.self) private var vm
 
@@ -26,12 +30,13 @@ struct MenuBarPopoverView: View {
                 .padding(.horizontal, 14)
                 .padding(.bottom, 9)
 
-            if vm.store.apiDataAge > 300 {
+            if vm.store.apiDataAge > Self.stalenessHintThreshold {
+                let isStale = vm.store.apiDataAge > CachedAPIResponse.staleAfter
                 HStack(spacing: 6) {
-                    Image(systemName: vm.store.apiDataAge > 3600
+                    Image(systemName: isStale
                           ? "exclamationmark.triangle.fill"
                           : "clock.arrow.circlepath")
-                        .foregroundStyle(vm.store.apiDataAge > 3600 ? .orange : .secondary)
+                        .foregroundStyle(isStale ? .orange : .secondary)
                     Text(stalenessLabel)
                         .foregroundStyle(.secondary)
                     Spacer()
