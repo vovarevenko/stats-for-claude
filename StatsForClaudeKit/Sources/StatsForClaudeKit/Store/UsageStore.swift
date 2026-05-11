@@ -45,7 +45,7 @@ public final class UsageStore {
     private let appGroupStore: AppGroupStore
     private let bookmarkStore: BookmarkResolving
     private let usageFetcher: UsageFetching
-    private let keychain: KeychainCredentialsReading
+    private let keychain: KeychainCredentialsAccessing
     private let credentialsCache: CredentialsCacheStoring
     private let oauthClient: TokenRefreshing
 
@@ -57,7 +57,7 @@ public final class UsageStore {
         appGroupStore: AppGroupStore = .shared,
         bookmarkStore: BookmarkResolving = BookmarkStore(),
         usageFetcher: UsageFetching = UsageAPIClient(),
-        keychain: KeychainCredentialsReading = KeychainStore(),
+        keychain: KeychainCredentialsAccessing = KeychainStore(),
         credentialsCache: CredentialsCacheStoring = KeychainCredentialsCache(),
         oauthClient: TokenRefreshing = ClaudeOAuthClient()
     ) {
@@ -250,6 +250,16 @@ public final class UsageStore {
         }
 
         if let creds = credentialsCache.read() {
+            // Cache predates `sourceEnvelope` (upgrade from a version that
+            // didn't capture the CLI envelope). Without it we can't splice
+            // a refresh back into `Claude Code-credentials` safely, so drop
+            // the cache and re-read from the CLI item. One ACL prompt on
+            // upgrade, envelope is in the cache from then on.
+            guard creds.sourceEnvelope != nil else {
+                log.info("Cached credentials lack envelope; re-reading from CLI Keychain")
+                invalidateCredentials()
+                return try readAndCacheFromCLI()
+            }
             cachedCredentials = creds
             if !creds.isExpiringSoon() {
                 log.debug("Access token resolved from local Keychain cache")
@@ -270,6 +280,13 @@ public final class UsageStore {
         }
 
         log.info("Credentials cache empty; reading Claude Code credentials")
+        return try readAndCacheFromCLI()
+    }
+
+    /// Reads `Claude Code-credentials` and seeds both the in-memory and
+    /// Keychain caches. The only path that can trigger the macOS ACL prompt
+    /// — kept behind explicit `log.info` to make any unexpected hit visible.
+    private func readAndCacheFromCLI() throws -> String {
         let creds = try keychain.readClaudeCredentials()
         cachedCredentials = creds
         credentialsCache.write(creds)
@@ -297,10 +314,25 @@ public final class UsageStore {
     private func tryRefresh(using creds: ClaudeCredentials) async -> ClaudeCredentials? {
         guard let refreshToken = creds.refreshToken else { return nil }
         do {
-            let new = try await oauthClient.refresh(using: refreshToken)
+            var new = try await oauthClient.refresh(using: refreshToken)
+            // OAuth response doesn't carry CLI-only envelope fields — keep
+            // ours so the next write-back doesn't drop `scopes` etc.
+            new.sourceEnvelope = creds.sourceEnvelope
             cachedCredentials = new
             credentialsCache.write(new)
-            log.info("Refreshed access token via OAuth")
+            // Mirror the refreshed tokens into the CLI's keychain item.
+            // Our refresh invalidated the CLI's old refresh token, so without
+            // this step the CLI's next refresh attempt fails and logs the
+            // user out.
+            do {
+                try keychain.writeClaudeCredentials(new)
+                log.info("Refreshed access token via OAuth (CLI keychain mirrored)")
+            } catch {
+                log
+                    .error(
+                        "OAuth refresh succeeded but CLI keychain write-back failed: \(error.localizedDescription, privacy: .public)"
+                    )
+            }
             return new
         } catch let APIError.rateLimited(retryAfter) {
             // Don't burn the cache — token is probably still good for a bit.

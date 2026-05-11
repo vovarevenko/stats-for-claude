@@ -36,11 +36,29 @@ final class StepFetcher: UsageFetching, @unchecked Sendable {
     }
 }
 
-struct FakeKeychain: KeychainCredentialsReading {
-    let credentials: ClaudeCredentials?
+final class FakeKeychain: KeychainCredentialsReading, KeychainCredentialsWriting, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _credentials: ClaudeCredentials?
+    private(set) var writeLog: [ClaudeCredentials] = []
+    var writeOutcome: Result<Void, Error> = .success(())
+
+    init(credentials: ClaudeCredentials? = nil) {
+        _credentials = credentials
+    }
+
     func readClaudeCredentials() throws -> ClaudeCredentials {
-        guard let credentials else { throw APIError.tokenNotFound }
-        return credentials
+        try lock.withLock {
+            guard let creds = _credentials else { throw APIError.tokenNotFound }
+            return creds
+        }
+    }
+
+    func writeClaudeCredentials(_ credentials: ClaudeCredentials) throws {
+        try lock.withLock {
+            try writeOutcome.get()
+            _credentials = credentials
+            writeLog.append(credentials)
+        }
     }
 
     static func token(_ token: String?) -> FakeKeychain {

@@ -14,3 +14,7 @@ disabled_rules:
   # Test stub class for URLProtocol uses `class func` to satisfy the
   # NSObject inheritance contract; can't migrate to `static`.
   - static_over_final_class
+  # @Suite structs accumulate one test case per scenario under a single
+  # subject; splitting them purely to satisfy a body-length rule fragments
+  # the suite without making it easier to read.
+  - type_body_length

@@ -102,5 +102,77 @@ struct KeychainStoreTests {
         #expect(creds.accessToken == "access-1")
         #expect(creds.refreshToken == "refresh-1")
         #expect(creds.expiresAt == Date(timeIntervalSince1970: expiresMs / 1000))
+        #expect(creds.sourceEnvelope == payload)
+    }
+
+    @Test("writeClaudeCredentials swaps OAuth fields and preserves envelope extras")
+    func writeBackPreservesExtras() throws {
+        let service = uniqueService()
+        let originalPayload = try JSONSerialization.data(withJSONObject: [
+            "claudeAiOauth": [
+                "accessToken": "old",
+                "refreshToken": "old-refresh",
+                "expiresAt": 1_700_000_000_000,
+                "scopes": ["user:read", "user:billing"],
+                "subscriptionType": "pro",
+            ],
+        ])
+        let item = KeychainItem(service: service, payload: originalPayload)
+        defer { _ = item }
+        let store = KeychainStore(service: service)
+
+        let read = try store.readClaudeCredentials()
+        let refreshed = ClaudeCredentials(
+            accessToken: "new",
+            refreshToken: "new-refresh",
+            expiresAt: Date(timeIntervalSince1970: 1_900_000_000),
+            sourceEnvelope: read.sourceEnvelope
+        )
+        try store.writeClaudeCredentials(refreshed)
+
+        let again = try store.readClaudeCredentials()
+        #expect(again.accessToken == "new")
+        #expect(again.refreshToken == "new-refresh")
+        #expect(again.expiresAt == Date(timeIntervalSince1970: 1_900_000_000))
+
+        let parsed = try JSONSerialization.jsonObject(with: again.sourceEnvelope ?? Data()) as? [String: Any]
+        let oauth = parsed?["claudeAiOauth"] as? [String: Any]
+        #expect((oauth?["scopes"] as? [String]) == ["user:read", "user:billing"])
+        #expect((oauth?["subscriptionType"] as? String) == "pro")
+    }
+
+    @Test("writeClaudeCredentials refuses to clobber the envelope when it's missing")
+    func writeBackRefusesWithoutEnvelope() throws {
+        let service = uniqueService()
+        let originalPayload = try JSONSerialization.data(withJSONObject: [
+            "claudeAiOauth": [
+                "accessToken": "old",
+                "refreshToken": "old-refresh",
+                "scopes": ["user:read"],
+                "subscriptionType": "pro",
+            ],
+        ])
+        let item = KeychainItem(service: service, payload: originalPayload)
+        defer { _ = item }
+        let store = KeychainStore(service: service)
+
+        let refreshed = ClaudeCredentials(
+            accessToken: "new",
+            refreshToken: "new-refresh",
+            expiresAt: Date(timeIntervalSince1970: 1_900_000_000),
+            sourceEnvelope: nil
+        )
+        #expect(throws: APIError.self) {
+            try store.writeClaudeCredentials(refreshed)
+        }
+
+        // Stored payload must be untouched after the refused write.
+        let again = try store.readClaudeCredentials()
+        #expect(again.accessToken == "old")
+        #expect(again.refreshToken == "old-refresh")
+        let parsed = try JSONSerialization.jsonObject(with: again.sourceEnvelope ?? Data()) as? [String: Any]
+        let oauth = parsed?["claudeAiOauth"] as? [String: Any]
+        #expect((oauth?["scopes"] as? [String]) == ["user:read"])
+        #expect((oauth?["subscriptionType"] as? String) == "pro")
     }
 }

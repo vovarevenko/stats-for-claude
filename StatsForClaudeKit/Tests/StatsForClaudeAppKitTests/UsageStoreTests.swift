@@ -6,6 +6,10 @@ import Testing
 @MainActor
 @Suite("UsageStore")
 struct UsageStoreTests {
+    /// Any non-nil envelope short-circuits the upgrade migration path; tests
+    /// that aren't exercising migration use this stand-in.
+    static let stubEnvelope = Data(#"{"claudeAiOauth":{}}"#.utf8)
+
     @Test("happy path: API success populates apiResponse")
     func happyPath() async {
         let (group, suite) = makeEphemeralAppGroupStore()
@@ -33,7 +37,10 @@ struct UsageStoreTests {
         let (group, suite) = makeEphemeralAppGroupStore()
         defer { cleanupSuite(suite) }
 
-        let cache = FakeCredentialsCache(ClaudeCredentials(accessToken: "stale"))
+        let cache = FakeCredentialsCache(ClaudeCredentials(
+            accessToken: "stale",
+            sourceEnvelope: Self.stubEnvelope
+        ))
 
         let store = UsageStore(
             appGroupStore: group,
@@ -59,7 +66,8 @@ struct UsageStoreTests {
         let expected = makeUsageResponse(fiveHour: 60, sevenDay: 30)
         let cache = FakeCredentialsCache(ClaudeCredentials(
             accessToken: "stale",
-            refreshToken: "refresh-1"
+            refreshToken: "refresh-1",
+            sourceEnvelope: Self.stubEnvelope
         ))
         let oauth = FakeOAuthClient(outcome: .success(ClaudeCredentials(
             accessToken: "fresh",
@@ -99,7 +107,8 @@ struct UsageStoreTests {
         let cache = FakeCredentialsCache(ClaudeCredentials(
             accessToken: "about-to-expire",
             refreshToken: "refresh-1",
-            expiresAt: .now.addingTimeInterval(30) // inside 300s leeway
+            expiresAt: .now.addingTimeInterval(30), // inside 300s leeway
+            sourceEnvelope: Self.stubEnvelope
         ))
         let oauth = FakeOAuthClient(outcome: .success(ClaudeCredentials(
             accessToken: "fresh",
@@ -128,7 +137,10 @@ struct UsageStoreTests {
         let (group, suite) = makeEphemeralAppGroupStore()
         defer { cleanupSuite(suite) }
 
-        let cache = FakeCredentialsCache(ClaudeCredentials(accessToken: "good"))
+        let cache = FakeCredentialsCache(ClaudeCredentials(
+            accessToken: "good",
+            sourceEnvelope: Self.stubEnvelope
+        ))
 
         let store = UsageStore(
             appGroupStore: group,
@@ -177,7 +189,8 @@ struct UsageStoreTests {
         let cache = FakeCredentialsCache(ClaudeCredentials(
             accessToken: "good",
             refreshToken: "refresh-1",
-            expiresAt: .now.addingTimeInterval(3600)
+            expiresAt: .now.addingTimeInterval(3600),
+            sourceEnvelope: Self.stubEnvelope
         ))
         let fetcher = StepFetcher(
             failuresBeforeSuccess: 1,
@@ -214,7 +227,8 @@ struct UsageStoreTests {
         let cache = FakeCredentialsCache(ClaudeCredentials(
             accessToken: "stale",
             refreshToken: "refresh-1",
-            expiresAt: .now.addingTimeInterval(-60)
+            expiresAt: .now.addingTimeInterval(-60),
+            sourceEnvelope: Self.stubEnvelope
         ))
         let oauth = FakeOAuthClient(outcome: .failure(APIError.rateLimited(retryAfter: 90)))
 
@@ -328,6 +342,121 @@ struct UsageStoreTests {
         #expect(parseRetryAfter(nil) == nil)
         #expect(parseRetryAfter("") == nil)
         #expect(parseRetryAfter("garbage") == nil)
+    }
+
+    @Test("OAuth refresh mirrors the new tokens back into the CLI keychain")
+    func refreshMirrorsBackToCLIKeychain() async {
+        let (group, suite) = makeEphemeralAppGroupStore()
+        defer { cleanupSuite(suite) }
+
+        let envelope = Data(#"{"claudeAiOauth":{"accessToken":"stale","refreshToken":"r1","expiresAt":0,"scopes":["a"],"subscriptionType":"pro"}}"#
+            .utf8)
+        let cache = FakeCredentialsCache(ClaudeCredentials(
+            accessToken: "stale",
+            refreshToken: "r1",
+            expiresAt: .now.addingTimeInterval(-60),
+            sourceEnvelope: envelope
+        ))
+        let keychain = FakeKeychain(credentials: ClaudeCredentials(accessToken: "stale"))
+        let oauth = FakeOAuthClient(outcome: .success(ClaudeCredentials(
+            accessToken: "fresh",
+            refreshToken: "r2",
+            expiresAt: .now.addingTimeInterval(3600)
+        )))
+        let store = UsageStore(
+            appGroupStore: group,
+            bookmarkStore: FakeBookmarkStore(),
+            usageFetcher: FakeFetcher(result: .success(makeUsageResponse())),
+            keychain: keychain,
+            credentialsCache: cache,
+            oauthClient: oauth
+        )
+
+        await store.refreshAPIInternal()
+
+        #expect(oauth.callCount == 1)
+        #expect(keychain.writeLog.count == 1)
+        let written = keychain.writeLog[0]
+        #expect(written.accessToken == "fresh")
+        #expect(written.refreshToken == "r2")
+        // Envelope from previous read is preserved through the refresh
+        #expect(written.sourceEnvelope == envelope)
+    }
+
+    @Test("CLI keychain write-back failure doesn't break our own refresh flow")
+    func writeBackFailureIsTolerated() async {
+        let (group, suite) = makeEphemeralAppGroupStore()
+        defer { cleanupSuite(suite) }
+
+        let envelope = Data(#"{"claudeAiOauth":{"accessToken":"stale","refreshToken":"r1","scopes":["a"]}}"#.utf8)
+        let cache = FakeCredentialsCache(ClaudeCredentials(
+            accessToken: "stale",
+            refreshToken: "r1",
+            expiresAt: .now.addingTimeInterval(-60),
+            sourceEnvelope: envelope
+        ))
+        let keychain = FakeKeychain(credentials: ClaudeCredentials(accessToken: "stale"))
+        keychain.writeOutcome = .failure(APIError.keychainWriteFailed(-25300))
+        let oauth = FakeOAuthClient(outcome: .success(ClaudeCredentials(
+            accessToken: "fresh",
+            refreshToken: "r2",
+            expiresAt: .now.addingTimeInterval(3600)
+        )))
+        let expected = makeUsageResponse(fiveHour: 42, sevenDay: 10)
+        let store = UsageStore(
+            appGroupStore: group,
+            bookmarkStore: FakeBookmarkStore(),
+            usageFetcher: FakeFetcher(result: .success(expected)),
+            keychain: keychain,
+            credentialsCache: cache,
+            oauthClient: oauth
+        )
+
+        await store.refreshAPIInternal()
+
+        #expect(store.apiResponse == expected)
+        #expect(cache.read()?.accessToken == "fresh")
+    }
+
+    @Test("Envelope-less cache migrates by re-reading the CLI keychain")
+    func envelopelessCacheMigratesViaCLIKeychain() async {
+        let (group, suite) = makeEphemeralAppGroupStore()
+        defer { cleanupSuite(suite) }
+
+        // Cache from an older build that didn't carry the envelope — expiry
+        // is in the future so a naive resolve would short-circuit and never
+        // pick up the envelope. Migration must override that.
+        let cache = FakeCredentialsCache(ClaudeCredentials(
+            accessToken: "stale-cache",
+            refreshToken: "r1",
+            expiresAt: .now.addingTimeInterval(3600),
+            sourceEnvelope: nil
+        ))
+        let cliEnvelope = Data(#"{"claudeAiOauth":{"accessToken":"fresh-cli","scopes":["x"]}}"#.utf8)
+        let cliCreds = ClaudeCredentials(
+            accessToken: "fresh-cli",
+            refreshToken: "r2",
+            expiresAt: .now.addingTimeInterval(3600),
+            sourceEnvelope: cliEnvelope
+        )
+        let keychain = FakeKeychain(credentials: cliCreds)
+        let oauth = FakeOAuthClient.never()
+        let store = UsageStore(
+            appGroupStore: group,
+            bookmarkStore: FakeBookmarkStore(),
+            usageFetcher: FakeFetcher(result: .success(makeUsageResponse())),
+            keychain: keychain,
+            credentialsCache: cache,
+            oauthClient: oauth
+        )
+
+        await store.refreshAPIInternal()
+
+        #expect(oauth.callCount == 0)
+        let cached = cache.read()
+        #expect(cached?.accessToken == "fresh-cli")
+        #expect(cached?.sourceEnvelope == cliEnvelope)
+        #expect(keychain.writeLog.isEmpty)
     }
 
     @Test("hasBookmark proxies BookmarkResolving")

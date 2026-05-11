@@ -37,6 +37,12 @@ public enum APIError: LocalizedError, Sendable {
     /// Keychain item (which is exactly what triggers the ACL prompt).
     case rateLimited(retryAfter: TimeInterval?)
     case decodingFailed(String)
+    case keychainWriteFailed(OSStatus)
+    /// Refused to write `Claude Code-credentials` because we don't have the
+    /// CLI's original envelope to splice fresh tokens into. Writing the bare
+    /// OAuth fields would clobber CLI-only keys (`scopes`, `subscriptionType`)
+    /// and break the CLI's parsing — logging the user out silently.
+    case missingEnvelope
 
     public var errorDescription: String? {
         switch self {
@@ -50,6 +56,8 @@ public enum APIError: LocalizedError, Sendable {
                 "Rate limited"
             }
         case let .decodingFailed(m): "Decoding failed: \(m)"
+        case let .keychainWriteFailed(status): "Keychain write failed (OSStatus \(status))"
+        case .missingEnvelope: "Missing CLI keychain envelope; refusing to overwrite with partial payload"
         }
     }
 }

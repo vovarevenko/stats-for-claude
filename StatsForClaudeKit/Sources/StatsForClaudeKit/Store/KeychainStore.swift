@@ -9,12 +9,22 @@ public protocol KeychainCredentialsReading: Sendable {
     func readClaudeCredentials() throws -> ClaudeCredentials
 }
 
+public protocol KeychainCredentialsWriting: Sendable {
+    /// Persist refreshed credentials back into the CLI's keychain item so
+    /// the CLI continues to see fresh tokens. Without this the CLI's next
+    /// refresh attempt would hit Anthropic with our now-invalidated
+    /// `refreshToken` and log the user out.
+    func writeClaudeCredentials(_ credentials: ClaudeCredentials) throws
+}
+
+public typealias KeychainCredentialsAccessing = KeychainCredentialsReading & KeychainCredentialsWriting
+
 /// Reads Claude Code OAuth credentials from the macOS Keychain.
 /// On first access macOS will prompt the user to allow access.
 ///
 /// `@unchecked Sendable` is sound: Security framework `SecItemCopyMatching`
 /// is documented as thread-safe and `service` is immutable.
-public final class KeychainStore: KeychainTokenReading, KeychainCredentialsReading, @unchecked Sendable {
+public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenReading, @unchecked Sendable {
     private let service: String
 
     public init(service: String = "Claude Code-credentials") {
@@ -50,12 +60,58 @@ public final class KeychainStore: KeychainTokenReading, KeychainCredentialsReadi
         return ClaudeCredentials(
             accessToken: token,
             refreshToken: refreshToken,
-            expiresAt: expiresAt
+            expiresAt: expiresAt,
+            sourceEnvelope: data
         )
     }
 
     public func readClaudeToken() throws -> String {
         try readClaudeCredentials().accessToken
+    }
+
+    public func writeClaudeCredentials(_ credentials: ClaudeCredentials) throws {
+        let payload = try Self.encodePayload(for: credentials)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+        ]
+        let attrs: [String: Any] = [
+            kSecValueData as String: payload,
+        ]
+        let status = SecItemUpdate(query as CFDictionary, attrs as CFDictionary)
+        guard status == errSecSuccess else {
+            throw APIError.keychainWriteFailed(status)
+        }
+    }
+
+    /// Build the JSON that goes back into `Claude Code-credentials` by
+    /// splicing fresh OAuth fields into the original envelope, preserving
+    /// CLI-only keys (`scopes`, `subscriptionType`, …). Throws when we have
+    /// no envelope to splice into — writing a bare payload would silently
+    /// log the user out of the CLI on next use.
+    private static func encodePayload(for credentials: ClaudeCredentials) throws -> Data {
+        guard var json = decodeEnvelope(credentials.sourceEnvelope) else {
+            throw APIError.missingEnvelope
+        }
+        var oauth = (json["claudeAiOauth"] as? [String: Any]) ?? [:]
+        applyTokens(credentials, into: &oauth)
+        json["claudeAiOauth"] = oauth
+        return try JSONSerialization.data(withJSONObject: json)
+    }
+
+    private static func decodeEnvelope(_ data: Data?) -> [String: Any]? {
+        guard let data else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
+    private static func applyTokens(_ credentials: ClaudeCredentials, into oauth: inout [String: Any]) {
+        oauth["accessToken"] = credentials.accessToken
+        if let refreshToken = credentials.refreshToken {
+            oauth["refreshToken"] = refreshToken
+        }
+        if let expiresAt = credentials.expiresAt {
+            oauth["expiresAt"] = Int64(expiresAt.timeIntervalSince1970 * 1000)
+        }
     }
 
     /// Claude Code stores `expiresAt` as milliseconds since Unix epoch
