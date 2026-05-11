@@ -531,3 +531,23 @@ Items previously evaluated and intentionally deferred:
   Overview header when `apiResponse?.fiveHour == nil`. Mirror the same
   rule for the 7-day window even though `sevenDay: null` is unlikely in
   practice.
+- **Graceful degradation when `/api/oauth/usage` is unavailable.** A
+  prolonged Anthropic outage or schema change makes session/weekly
+  metrics persistently zero or stale, which is indistinguishable from "I
+  haven't used Claude lately" — and pushes users toward refund requests.
+  Track a consecutive-failure streak on `UsageStore`; once it crosses a
+  threshold (e.g. 5 ticks ≈ 15 min), surface a banner in
+  `OverviewTabView`'s `unavailable` state: "Anthropic usage API is
+  unavailable. Per-project costs from local files continue to update."
+  JSONL-driven views must keep rendering as usual — they don't depend on
+  the API. Sets expectations during transient upstream issues without
+  needing telemetry.
+- **Disclose the Anthropic API dependency in the App Store listing and
+  README.** One short paragraph stating that session/weekly metrics rely
+  on an OAuth endpoint shared with the Claude Code CLI which Anthropic
+  doesn't publicly document, and may temporarily stop working if they
+  change it — while per-project breakdowns from local JSONL remain
+  unaffected. Lowers refund pressure when upstream breaks and gives App
+  Review a ready-made explanation of why we read
+  `Claude Code-credentials`. Mirror the same paragraph into README's
+  "What This Is" section so it lives outside the App Store too.
