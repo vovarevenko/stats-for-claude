@@ -25,28 +25,48 @@ public final class UsageStore {
     private var apiInFlight = false
     private var jsonlInFlight = false
 
+    /// Until this moment all Anthropic-bound HTTP traffic is suppressed.
+    /// Anthropic shares a single rate-limit bucket across `/api/oauth/usage`
+    /// and `/v1/oauth/token`, so a 429 from either endpoint must back off
+    /// both — otherwise the next OAuth refresh also 429s, `tryRefresh`
+    /// returns `nil`, we fall through to reading `Claude Code-credentials`,
+    /// and the ACL prompt comes back.
+    private var cooldownUntil: Date?
+    /// Count of consecutive 429s. Drives exponential back-off when the upstream
+    /// `Retry-After` is missing or ≤ 0 (Anthropic occasionally returns
+    /// `Retry-After: 0`, which would otherwise reduce the cooldown to a no-op).
+    /// Reset on the next successful response.
+    private var consecutive429Count = 0
+
+    /// Schedule of fall-back cooldowns indexed by `consecutive429Count - 1`,
+    /// capped at 30 min so a stuck rate limit doesn't permanently stop us.
+    static let backoffSchedule: [TimeInterval] = [60, 120, 240, 480, 960, 1800]
+
     private let appGroupStore: AppGroupStore
     private let bookmarkStore: BookmarkResolving
     private let usageFetcher: UsageFetching
-    private let keychain: KeychainTokenReading
-    private let tokenCache: TokenCacheStoring
+    private let keychain: KeychainCredentialsReading
+    private let credentialsCache: CredentialsCacheStoring
+    private let oauthClient: TokenRefreshing
 
-    /// In-memory mirror of the Keychain-cached token; avoids a Security framework
+    /// In-memory mirror of the cached credentials; avoids a Security framework
     /// round-trip on every refresh inside a single launch.
-    private var cachedToken: String?
+    private var cachedCredentials: ClaudeCredentials?
 
     public init(
         appGroupStore: AppGroupStore = .shared,
         bookmarkStore: BookmarkResolving = BookmarkStore(),
         usageFetcher: UsageFetching = UsageAPIClient(),
-        keychain: KeychainTokenReading = KeychainStore(),
-        tokenCache: TokenCacheStoring = KeychainTokenCache()
+        keychain: KeychainCredentialsReading = KeychainStore(),
+        credentialsCache: CredentialsCacheStoring = KeychainCredentialsCache(),
+        oauthClient: TokenRefreshing = ClaudeOAuthClient()
     ) {
         self.appGroupStore = appGroupStore
         self.bookmarkStore = bookmarkStore
         self.usageFetcher = usageFetcher
         self.keychain = keychain
-        self.tokenCache = tokenCache
+        self.credentialsCache = credentialsCache
+        self.oauthClient = oauthClient
 
         // Sanitize: prior versions stored the OAuth token in plain text under
         // UserDefaults.standard. Strip that leftover on first run after upgrade.
@@ -95,12 +115,24 @@ public final class UsageStore {
     /// often.
     public func refreshAPI(settings: AppSettings) {
         guard !apiInFlight else { return }
+        guard !isInCooldown() else {
+            log.debug("Skipping API refresh; in rate-limit cooldown")
+            return
+        }
         apiInFlight = true
         Task {
             await refreshAPIInternal()
             apiInFlight = false
             publishSnapshot(settings: settings)
         }
+    }
+
+    /// True while we're still inside the rate-limit cooldown window. Exposed
+    /// internally so callers and tests can reason about why a refresh was a
+    /// no-op.
+    func isInCooldown(now: Date = .now) -> Bool {
+        guard let until = cooldownUntil else { return false }
+        return now < until
     }
 
     /// Reparse `~/.claude/projects/`. Heavier (file enumeration + per-line
@@ -135,16 +167,31 @@ public final class UsageStore {
     /// Task to settle.
     func refreshAPIInternal() async {
         do {
-            let token = try resolveToken()
-            let response = try await usageFetcher.fetchUsage(token: token)
-            apiResponse = response
-            apiDataAge = 0
-            appGroupStore.save(response)
+            let token = try await resolveAccessToken()
+            do {
+                let response = try await usageFetcher.fetchUsage(token: token)
+                apiResponse = response
+                apiDataAge = 0
+                appGroupStore.save(response)
+                clearCooldown()
+            } catch APIError.httpError(401) {
+                // Access token rejected mid-flight. Try one refresh+retry before
+                // giving up on the cached credentials.
+                log.info("API returned 401; attempting refresh-and-retry")
+                let retried = try await refreshAndRetry()
+                apiResponse = retried
+                apiDataAge = 0
+                appGroupStore.save(retried)
+                clearCooldown()
+            }
         } catch let error as APIError {
-            if case .httpError(401) = error {
-                log.info("API returned 401; invalidating cached token")
-                invalidateToken()
-            } else {
+            switch error {
+            case .httpError(401):
+                log.info("Refresh-and-retry exhausted; invalidating cached credentials")
+                invalidateCredentials()
+            case let .rateLimited(retryAfter):
+                enterCooldown(retryAfter: retryAfter)
+            default:
                 log.error("API refresh failed: \(error.localizedDescription, privacy: .public)")
             }
             loadCachedResponseIfNeeded()
@@ -154,37 +201,121 @@ public final class UsageStore {
         }
     }
 
+    private func enterCooldown(retryAfter: TimeInterval?) {
+        consecutive429Count += 1
+        let wait: TimeInterval
+        if let retryAfter, retryAfter > 0 {
+            wait = retryAfter
+        } else {
+            let idx = min(consecutive429Count - 1, Self.backoffSchedule.count - 1)
+            wait = Self.backoffSchedule[idx]
+        }
+        cooldownUntil = Date(timeIntervalSinceNow: wait)
+        let attempt = consecutive429Count
+        log
+            .info(
+                "Rate limited (attempt \(attempt, privacy: .public)); pausing Anthropic requests for \(Int(wait), privacy: .public)s"
+            )
+    }
+
+    /// Cleared on the next successful Anthropic response. Without this, a
+    /// transient rate limit would leave `consecutive429Count` permanently
+    /// elevated and force long cooldowns even after the upstream recovers.
+    private func clearCooldown() {
+        let prior = consecutive429Count
+        if prior > 0 {
+            log.info("Rate-limit cleared after \(prior, privacy: .public) attempt(s)")
+        }
+        consecutive429Count = 0
+        cooldownUntil = nil
+    }
+
     private func loadCachedResponseIfNeeded() {
         guard let cached = appGroupStore.loadCachedAPIResponse() else { return }
         if apiResponse == nil { apiResponse = cached.response }
         apiDataAge = cached.age
     }
 
-    private func resolveToken() throws -> String {
-        // 1. In-memory (same launch).
-        if let t = cachedToken { return t }
-        // 2. Our Keychain cache — populated on the first successful read from
-        //    Claude Code's credentials item, survives relaunch silently.
-        if let t = tokenCache.readToken() {
-            log.debug("Token resolved from local Keychain cache")
-            cachedToken = t
-            return t
+    /// Resolves a usable access token. The chain is:
+    /// 1. In-memory credentials (same launch).
+    /// 2. Our own Keychain cache (`KeychainCredentialsCache`). If the access
+    ///    token is expiring soon and we hold a refresh token, exchange it via
+    ///    `ClaudeOAuthClient` instead of touching the CLI Keychain.
+    /// 3. Read `Claude Code-credentials` from the Keychain. This is the only
+    ///    step that can trigger the macOS ACL prompt; the goal of the whole
+    ///    cache+refresh design is to keep step 3 to a one-time event.
+    private func resolveAccessToken() async throws -> String {
+        if let creds = cachedCredentials, !creds.isExpiringSoon() {
+            return creds.accessToken
         }
-        // 3. Read from Claude Code's Keychain item. macOS shows the access prompt
-        //    once; the resulting token is then mirrored into our own cache. If
-        //    the user picked "Allow" instead of "Always Allow" they will see the
-        //    prompt on every cold-start regardless — that's a Keychain ACL
-        //    decision macOS holds outside our control.
-        log.info("Token cache empty; reading Claude Code credentials")
-        let t = try keychain.readClaudeToken()
-        cachedToken = t
-        tokenCache.writeToken(t)
-        return t
+
+        if let creds = credentialsCache.read() {
+            cachedCredentials = creds
+            if !creds.isExpiringSoon() {
+                log.debug("Access token resolved from local Keychain cache")
+                return creds.accessToken
+            }
+            if let refreshed = await tryRefresh(using: creds) {
+                return refreshed.accessToken
+            }
+            // If refresh failed because of a rate limit, do NOT fall through
+            // to the CLI Keychain — that's exactly the path that surfaces an
+            // ACL prompt. Surface the cooldown to the caller so the API tick
+            // is skipped and the cached (slightly expired) token survives.
+            if isInCooldown() { throw APIError.rateLimited(retryAfter: nil) }
+            // Other failure (no refresh token, network error). Drop the
+            // stale cache and fall through to reading the CLI item.
+            log.info("Cached credentials unusable; falling back to CLI Keychain")
+            invalidateCredentials()
+        }
+
+        log.info("Credentials cache empty; reading Claude Code credentials")
+        let creds = try keychain.readClaudeCredentials()
+        cachedCredentials = creds
+        credentialsCache.write(creds)
+        return creds.accessToken
     }
 
-    private func invalidateToken() {
-        cachedToken = nil
-        tokenCache.deleteToken()
+    /// Called after a mid-flight 401: rotate the access token and retry the
+    /// API once. Rethrows `APIError.httpError(401)` if the retry also fails so
+    /// the caller can decide to invalidate.
+    private func refreshAndRetry() async throws -> UsageAPIResponse {
+        guard let creds = cachedCredentials ?? credentialsCache.read() else {
+            throw APIError.httpError(401)
+        }
+        guard let refreshed = await tryRefresh(using: creds) else {
+            // If `tryRefresh` set a cooldown (its own 429), surface that
+            // instead of 401 so the outer catch keeps the cache intact.
+            if isInCooldown() { throw APIError.rateLimited(retryAfter: nil) }
+            throw APIError.httpError(401)
+        }
+        return try await usageFetcher.fetchUsage(token: refreshed.accessToken)
+    }
+
+    /// Best-effort exchange of `creds.refreshToken` for a new access token.
+    /// Updates both the in-memory and Keychain caches on success.
+    private func tryRefresh(using creds: ClaudeCredentials) async -> ClaudeCredentials? {
+        guard let refreshToken = creds.refreshToken else { return nil }
+        do {
+            let new = try await oauthClient.refresh(using: refreshToken)
+            cachedCredentials = new
+            credentialsCache.write(new)
+            log.info("Refreshed access token via OAuth")
+            return new
+        } catch let APIError.rateLimited(retryAfter) {
+            // Don't burn the cache — token is probably still good for a bit.
+            // The cooldown will gate the next refresh attempt too.
+            enterCooldown(retryAfter: retryAfter)
+            return nil
+        } catch {
+            log.error("OAuth refresh failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    private func invalidateCredentials() {
+        cachedCredentials = nil
+        credentialsCache.delete()
     }
 
     func refreshJSONLInternal(settings: AppSettings) async {

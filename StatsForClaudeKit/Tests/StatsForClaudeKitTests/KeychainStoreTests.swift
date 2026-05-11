@@ -83,4 +83,24 @@ struct KeychainStoreTests {
         let store = KeychainStore(service: service)
         #expect(try store.readClaudeToken() == "secret-abc")
     }
+
+    @Test("readClaudeCredentials extracts refreshToken and millisecond expiresAt")
+    func readsFullCredentials() throws {
+        let service = uniqueService()
+        let expiresMs: Double = 1_900_000_000_000 // 2030-03-17T18:26:40Z
+        let payload = try JSONSerialization.data(withJSONObject: [
+            "claudeAiOauth": [
+                "accessToken": "access-1",
+                "refreshToken": "refresh-1",
+                "expiresAt": expiresMs,
+            ],
+        ])
+        let item = KeychainItem(service: service, payload: payload)
+        defer { _ = item }
+        let store = KeychainStore(service: service)
+        let creds = try store.readClaudeCredentials()
+        #expect(creds.accessToken == "access-1")
+        #expect(creds.refreshToken == "refresh-1")
+        #expect(creds.expiresAt == Date(timeIntervalSince1970: expiresMs / 1000))
+    }
 }

@@ -9,11 +9,42 @@ struct FakeFetcher: UsageFetching {
     }
 }
 
-struct FakeKeychain: KeychainTokenReading {
-    let token: String?
-    func readClaudeToken() throws -> String {
-        guard let token else { throw APIError.tokenNotFound }
-        return token
+/// Fetcher that fails the first N calls with the given error then succeeds.
+/// Used to drive the 401-then-refresh-and-retry path in UsageStore.
+final class StepFetcher: UsageFetching, @unchecked Sendable {
+    private let lock = NSLock()
+    private var remainingFailures: Int
+    private let failure: Error
+    private let success: UsageAPIResponse
+    private(set) var callCount = 0
+
+    init(failuresBeforeSuccess: Int, failure: Error, success: UsageAPIResponse) {
+        remainingFailures = failuresBeforeSuccess
+        self.failure = failure
+        self.success = success
+    }
+
+    func fetchUsage(token _: String) async throws -> UsageAPIResponse {
+        try lock.withLock {
+            callCount += 1
+            if remainingFailures > 0 {
+                remainingFailures -= 1
+                throw failure
+            }
+            return success
+        }
+    }
+}
+
+struct FakeKeychain: KeychainCredentialsReading {
+    let credentials: ClaudeCredentials?
+    func readClaudeCredentials() throws -> ClaudeCredentials {
+        guard let credentials else { throw APIError.tokenNotFound }
+        return credentials
+    }
+
+    static func token(_ token: String?) -> FakeKeychain {
+        FakeKeychain(credentials: token.map { ClaudeCredentials(accessToken: $0) })
     }
 }
 
@@ -32,24 +63,53 @@ final class FakeBookmarkStore: BookmarkResolving, @unchecked Sendable {
     }
 }
 
-final class FakeTokenCache: TokenCacheStoring, @unchecked Sendable {
+final class FakeCredentialsCache: CredentialsCacheStoring, @unchecked Sendable {
     private let lock = NSLock()
-    private var _stored: String?
+    private var _stored: ClaudeCredentials?
     private(set) var deleteCount = 0
+    private(set) var writeCount = 0
 
-    func readToken() -> String? {
+    init(_ initial: ClaudeCredentials? = nil) {
+        _stored = initial
+    }
+
+    func read() -> ClaudeCredentials? {
         lock.withLock { _stored }
     }
 
-    func writeToken(_ token: String) {
-        lock.withLock { _stored = token }
+    func write(_ credentials: ClaudeCredentials) {
+        lock.withLock {
+            _stored = credentials
+            writeCount += 1
+        }
     }
 
-    func deleteToken() {
+    func delete() {
         lock.withLock {
             _stored = nil
             deleteCount += 1
         }
+    }
+}
+
+/// Fake OAuth client. Either returns a canned response or throws on every
+/// invocation. Tracks call count so tests can assert refresh was attempted.
+final class FakeOAuthClient: TokenRefreshing, @unchecked Sendable {
+    private let lock = NSLock()
+    private let outcome: Result<ClaudeCredentials, Error>
+    private(set) var callCount = 0
+
+    init(outcome: Result<ClaudeCredentials, Error>) {
+        self.outcome = outcome
+    }
+
+    static func never() -> FakeOAuthClient {
+        FakeOAuthClient(outcome: .failure(APIError.invalidResponse))
+    }
+
+    func refresh(using _: String) async throws -> ClaudeCredentials {
+        lock.withLock { callCount += 1 }
+        return try outcome.get()
     }
 }
 

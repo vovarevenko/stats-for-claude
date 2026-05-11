@@ -22,7 +22,12 @@ public final class MenuBarViewModel {
     /// (which lives in a different scene) can request a specific tab when opening it.
     public var selectedTab: DashboardTab = .overview
 
-    private static let apiRefreshInterval: Duration = .seconds(60)
+    /// Anthropic enforces ~1 request per 2 min on `/api/oauth/usage` per
+    /// OAuth session, shared with the Claude Code CLI itself. 180 s gives
+    /// 60 s of headroom under that ceiling so concurrent CLI activity
+    /// doesn't push us into 429 + cooldown territory; the data is a usage
+    /// percentage anyway, second-precision freshness has no value.
+    private static let apiRefreshInterval: Duration = .seconds(180)
     private static let jsonlRefreshInterval: Duration = .seconds(300)
 
     private var apiTimer: Task<Void, Never>?

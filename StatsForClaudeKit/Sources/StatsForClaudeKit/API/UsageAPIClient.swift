@@ -30,6 +30,9 @@ public struct UsageAPIClient: Sendable {
         let (data, response) = try await session.data(for: req)
 
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if http.statusCode == 429 {
+            throw APIError.rateLimited(retryAfter: parseRetryAfter(http.value(forHTTPHeaderField: "Retry-After")))
+        }
         guard http.statusCode == 200 else { throw APIError.httpError(http.statusCode) }
 
         do {

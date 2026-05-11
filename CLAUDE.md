@@ -48,9 +48,10 @@ business logic to it is a smell; lift it down a layer.
 | Protocol | Production impl | Used by |
 | --- | --- | --- |
 | `UsageFetching` | `UsageAPIClient` | `UsageStore.refreshAPI` |
-| `KeychainTokenReading` | `KeychainStore` (`Claude Code-credentials`) | `UsageStore.resolveToken` |
+| `KeychainCredentialsReading` | `KeychainStore` (`Claude Code-credentials`) | `UsageStore.resolveAccessToken` (fallback only) |
 | `BookmarkResolving` | `BookmarkStore` | `UsageStore.refreshJSONL`, `MenuBarViewModel.needsOnboarding` |
-| `TokenCacheStoring` | `KeychainTokenCache` (own service) | `UsageStore.resolveToken` |
+| `CredentialsCacheStoring` | `KeychainCredentialsCache` (own service) | `UsageStore.resolveAccessToken` |
+| `TokenRefreshing` | `ClaudeOAuthClient` | `UsageStore.resolveAccessToken`, `.refreshAndRetry` |
 | `SettingsPersisting` | `SettingsStore` | `MenuBarViewModel.updateSettings` |
 
 Everything that reaches the network, Keychain, file system, or
@@ -59,7 +60,11 @@ same** — never instantiate concrete IO types inside business logic.
 
 ### Refresh cadences
 
-- API: 60 s (cheap, one HTTP request).
+- API: 180 s. Anthropic rate-limits `/api/oauth/usage` to ~1 request per
+  2 min per OAuth session (shared with the Claude Code CLI's own usage).
+  60 s caused every other tick to 429 and feed the cooldown loop; 120 s
+  sat right at the limit; 180 s leaves 60 s of headroom for concurrent
+  CLI activity.
 - JSONL: 300 s (heavy, file enumeration).
 
 Two independent timers in `MenuBarViewModel.start()`. Don't merge them —
@@ -406,10 +411,28 @@ saying "lint will be fixed in a follow-up" — there are no follow-ups.
   `SettingsStore`) and each comment cites the docs that justify it. New
   ones must do the same.
 - **Don't read `Claude Code-credentials` from a hot path.** macOS shows an
-  ACL prompt the first time and again on every cold start unless the user
-  hits "Always Allow" — which we don't control. Always go through
-  `TokenCacheStoring` first; the chain is in-memory → our Keychain item →
-  Claude Code's Keychain item, in that order.
+  ACL prompt the first time, and the CLI rotates its Keychain item on every
+  token refresh — rotation resets the ACL, so even "Always Allow" stops
+  helping after one OAuth cycle. The resolve chain is: in-memory creds → our
+  `KeychainCredentialsCache` (with `ClaudeOAuthClient` refresh when the
+  access token is expiring) → `Claude Code-credentials` as last resort. Keep
+  step 3 to a one-time event; never add a code path that reaches the CLI
+  Keychain on a steady-state refresh.
+- **OAuth refresh against `console.anthropic.com/v1/oauth/token`.** Client
+  ID `9d1c250a-e61b-44d9-88ed-5944d1962f5e` matches the Claude Code CLI.
+  When `UsageAPIClient` returns 401, `UsageStore.refreshAndRetry` does one
+  refresh-and-retry before invalidating the cache; don't short-circuit that
+  retry, otherwise a transient 401 evicts good credentials and forces a CLI
+  Keychain read on the next tick.
+- **429 has a shared cooldown across both Anthropic endpoints.** Anthropic
+  rate-limits `/api/oauth/usage` and `/v1/oauth/token` from the same bucket.
+  `UsageStore.cooldownUntil` suppresses **both** for the duration of one
+  back-off window. `Retry-After ≤ 0` is treated as "no useful guidance" and
+  the schedule `[60, 120, 240, 480, 960, 1800]` is used instead (indexed by
+  `consecutive429Count`). A 429 from OAuth refresh **never invalidates the
+  credentials cache** — it just enters cooldown, so the slightly-expired
+  token survives until the limit lifts and we never fall through to the CLI
+  Keychain (which would re-prompt).
 - **App Sandbox + bookmark lifecycle.** A URL resolved from a security
   bookmark is only readable inside
   `startAccessingSecurityScopedResource() … stopAccessingSecurityScopedResource()`.
@@ -439,7 +462,8 @@ When something looks wrong on screen, run through this in order:
    not `/Applications/` (the latter is a stale prebuilt copy).
 3. Reset state for clean-launch testing:
    ```bash
-   security delete-generic-password -s "org.revenko.stats-for-claude.token-cache" -a "claude-oauth"
+   security delete-generic-password -s "org.revenko.stats-for-claude.token-cache" -a "claude-oauth-v2"
+   security delete-generic-password -s "org.revenko.stats-for-claude.token-cache" -a "claude-oauth" 2>/dev/null
    defaults delete org.revenko.stats-for-claude 2>/dev/null
    defaults delete 4DDDLR4X3X.group.org.revenko.stats-for-claude 2>/dev/null
    ```

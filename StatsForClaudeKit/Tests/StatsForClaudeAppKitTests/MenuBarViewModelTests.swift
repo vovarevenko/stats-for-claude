@@ -16,8 +16,9 @@ struct MenuBarViewModelTests {
             appGroupStore: group,
             bookmarkStore: bookmark,
             usageFetcher: fetcher,
-            keychain: FakeKeychain(token: token),
-            tokenCache: FakeTokenCache()
+            keychain: FakeKeychain.token(token),
+            credentialsCache: FakeCredentialsCache(),
+            oauthClient: FakeOAuthClient.never()
         )
         return (store, suite)
     }
