@@ -38,10 +38,10 @@ public enum APIError: LocalizedError, Sendable {
     case rateLimited(retryAfter: TimeInterval?)
     case decodingFailed(String)
     case keychainWriteFailed(OSStatus)
-    /// Refused to write `Claude Code-credentials` because we don't have the
-    /// CLI's original envelope to splice fresh tokens into. Writing the bare
-    /// OAuth fields would clobber CLI-only keys (`scopes`, `subscriptionType`)
-    /// and break the CLI's parsing — logging the user out silently.
+    /// Refused to write `Claude Code-credentials` because the current
+    /// envelope didn't parse as JSON. Writing a synthesised payload would
+    /// clobber CLI-only keys (`scopes`, `subscriptionType`, …) and break
+    /// CLI parsing — logging the user out silently.
     case missingEnvelope
 
     public var errorDescription: String? {

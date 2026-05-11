@@ -32,20 +32,7 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
     }
 
     public func readClaudeCredentials() throws -> ClaudeCredentials {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-
-        var item: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-
-        guard status == errSecSuccess, let data = item as? Data else {
-            throw APIError.tokenNotFound
-        }
-
+        let data = try readEnvelopeData()
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let oauth = json["claudeAiOauth"] as? [String: Any],
@@ -53,15 +40,12 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
         else {
             throw APIError.tokenNotFound
         }
-
         let refreshToken = oauth["refreshToken"] as? String
         let expiresAt = Self.decodeExpiresAt(oauth["expiresAt"])
-
         return ClaudeCredentials(
             accessToken: token,
             refreshToken: refreshToken,
-            expiresAt: expiresAt,
-            sourceEnvelope: data
+            expiresAt: expiresAt
         )
     }
 
@@ -69,8 +53,16 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
         try readClaudeCredentials().accessToken
     }
 
+    /// Splices the fresh OAuth fields into the **current** CLI envelope.
+    /// Reading the live envelope every time (instead of relying on a cached
+    /// copy) means CLI-only keys like `scopes`, `subscriptionType`, and
+    /// `rateLimitTier` always reflect the latest CLI state — even if the
+    /// user has re-run `claude /login` between our refreshes. After the
+    /// initial Allow prompt, the read costs no additional prompts because
+    /// `SecItemUpdate` preserves the keychain item's ACL.
     public func writeClaudeCredentials(_ credentials: ClaudeCredentials) throws {
-        let payload = try Self.encodePayload(for: credentials)
+        let envelope = try readEnvelopeData()
+        let payload = try Self.encodePayload(for: credentials, envelope: envelope)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -84,24 +76,33 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
         }
     }
 
-    /// Build the JSON that goes back into `Claude Code-credentials` by
-    /// splicing fresh OAuth fields into the original envelope, preserving
-    /// CLI-only keys (`scopes`, `subscriptionType`, …). Throws when we have
-    /// no envelope to splice into — writing a bare payload would silently
-    /// log the user out of the CLI on next use.
-    private static func encodePayload(for credentials: ClaudeCredentials) throws -> Data {
-        guard var json = decodeEnvelope(credentials.sourceEnvelope) else {
+    private func readEnvelopeData() throws -> Data {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else {
+            throw APIError.tokenNotFound
+        }
+        return data
+    }
+
+    /// Splices the fresh OAuth fields into a copy of the supplied envelope,
+    /// preserving every CLI-only key. Refuses to write a synthesised payload
+    /// if the envelope can't be parsed — a bare 3-field write would log the
+    /// CLI out on next use.
+    private static func encodePayload(for credentials: ClaudeCredentials, envelope: Data) throws -> Data {
+        guard var json = (try? JSONSerialization.jsonObject(with: envelope)) as? [String: Any] else {
             throw APIError.missingEnvelope
         }
         var oauth = (json["claudeAiOauth"] as? [String: Any]) ?? [:]
         applyTokens(credentials, into: &oauth)
         json["claudeAiOauth"] = oauth
         return try JSONSerialization.data(withJSONObject: json)
-    }
-
-    private static func decodeEnvelope(_ data: Data?) -> [String: Any]? {
-        guard let data else { return nil }
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
     private static func applyTokens(_ credentials: ClaudeCredentials, into oauth: inout [String: Any]) {

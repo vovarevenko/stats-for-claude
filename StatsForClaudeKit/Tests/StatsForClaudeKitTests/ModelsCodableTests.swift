@@ -362,3 +362,24 @@ struct CachedAPIResponseCodableTests {
         #expect(stale.isStale == true)
     }
 }
+
+// MARK: – ClaudeCredentials
+
+@Suite("ClaudeCredentials Codable")
+struct ClaudeCredentialsCodableTests {
+    @Test("ignores legacy sourceEnvelope field written by older builds")
+    func legacyCachesDecodeCleanly() throws {
+        let legacy = """
+        {
+          "accessToken": "a",
+          "refreshToken": "r",
+          "expiresAt": 769700000,
+          "sourceEnvelope": "eyJjbGF1ZGVBaU9hdXRoIjp7fX0="
+        }
+        """
+        let decoded = try JSONDecoder().decode(ClaudeCredentials.self, from: Data(legacy.utf8))
+        #expect(decoded.accessToken == "a")
+        #expect(decoded.refreshToken == "r")
+        #expect(decoded.expiresAt != nil)
+    }
+}

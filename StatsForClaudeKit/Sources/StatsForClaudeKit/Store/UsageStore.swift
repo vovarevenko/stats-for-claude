@@ -250,16 +250,6 @@ public final class UsageStore {
         }
 
         if let creds = credentialsCache.read() {
-            // Cache predates `sourceEnvelope` (upgrade from a version that
-            // didn't capture the CLI envelope). Without it we can't splice
-            // a refresh back into `Claude Code-credentials` safely, so drop
-            // the cache and re-read from the CLI item. One ACL prompt on
-            // upgrade, envelope is in the cache from then on.
-            guard creds.sourceEnvelope != nil else {
-                log.info("Cached credentials lack envelope; re-reading from CLI Keychain")
-                invalidateCredentials()
-                return try readAndCacheFromCLI()
-            }
             cachedCredentials = creds
             if !creds.isExpiringSoon() {
                 log.debug("Access token resolved from local Keychain cache")
@@ -314,16 +304,15 @@ public final class UsageStore {
     private func tryRefresh(using creds: ClaudeCredentials) async -> ClaudeCredentials? {
         guard let refreshToken = creds.refreshToken else { return nil }
         do {
-            var new = try await oauthClient.refresh(using: refreshToken)
-            // OAuth response doesn't carry CLI-only envelope fields — keep
-            // ours so the next write-back doesn't drop `scopes` etc.
-            new.sourceEnvelope = creds.sourceEnvelope
+            let new = try await oauthClient.refresh(using: refreshToken)
             cachedCredentials = new
             credentialsCache.write(new)
             // Mirror the refreshed tokens into the CLI's keychain item.
             // Our refresh invalidated the CLI's old refresh token, so without
             // this step the CLI's next refresh attempt fails and logs the
-            // user out.
+            // user out. `writeClaudeCredentials` reads the current envelope
+            // first so CLI-only fields (`scopes`, `subscriptionType`, …)
+            // always reflect the CLI's latest state.
             do {
                 try keychain.writeClaudeCredentials(new)
                 log.info("Refreshed access token via OAuth (CLI keychain mirrored)")
