@@ -523,3 +523,11 @@ Items previously evaluated and intentionally deferred:
   decode-via-migration test.
 - **macOS 26 CI runner** — add `xcodebuild` of the app target as a third
   job once GitHub ships `macos-26`.
+- **Distinguish "no active 5-hour session" from "0%."** Anthropic's
+  `/api/oauth/usage` returns `five_hour: null` when the user hasn't made a
+  request in the last 5 hours. Right now `sessionPercent` becomes `0` and
+  the menu bar reads `0% · X%` — indistinguishable from a session that is
+  open and idle. Render `—` (em-dash) in both the menu bar label and the
+  Overview header when `apiResponse?.fiveHour == nil`. Mirror the same
+  rule for the 7-day window even though `sevenDay: null` is unlikely in
+  practice.
