@@ -19,14 +19,14 @@ struct SettingsView: View {
                 LabeledContent(String(localized: "subscription_price")) {
                     HStack(spacing: 6) {
                         TextField(
-                            "",
+                            String(""),
                             value: $draft.subscriptionPriceUSD,
                             format: .number.precision(.fractionLength(0 ... 2))
                         )
                         .frame(width: 72)
                         .multilineTextAlignment(.trailing)
 
-                        Picker("", selection: $draft.currency) {
+                        Picker(String(""), selection: $draft.currency) {
                             ForEach(AppSettings.Currency.allCases, id: \.self) { c in
                                 Text(c.rawValue).tag(c)
                             }
@@ -52,7 +52,7 @@ struct SettingsView: View {
             Section {
                 LabeledContent(String(localized: "session_limit_label")) {
                     TextField(
-                        "",
+                        String(""),
                         value: $draft.sessionTokenLimit,
                         format: .number.grouping(.automatic)
                     )
@@ -62,7 +62,7 @@ struct SettingsView: View {
 
                 LabeledContent(String(localized: "weekly_limit_label")) {
                     TextField(
-                        "",
+                        String(""),
                         value: $draft.weeklyTokenLimit,
                         format: .number.grouping(.automatic)
                     )
