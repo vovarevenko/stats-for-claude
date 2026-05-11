@@ -176,6 +176,37 @@ struct KeychainStoreTests {
         #expect(String(data: raw, encoding: .utf8) == "not json")
     }
 
+    @Test("parseCredentials accepts the canonical CLI envelope shape")
+    func parseAcceptsCanonicalShape() throws {
+        let payload = try JSONSerialization.data(withJSONObject: [
+            "claudeAiOauth": [
+                "accessToken": "a",
+                "refreshToken": "r",
+                "expiresAt": 1_900_000_000_000,
+                "scopes": ["user:read"],
+            ],
+        ])
+        let creds = KeychainStore.parseCredentials(from: payload)
+        #expect(creds?.accessToken == "a")
+        #expect(creds?.refreshToken == "r")
+    }
+
+    @Test("parseCredentials rejects envelopes missing the OAuth wrapper or accessToken")
+    func parseRejectsBadShapes() throws {
+        // Missing claudeAiOauth wrapper
+        let missingWrapper = try JSONSerialization.data(withJSONObject: ["accessToken": "a"])
+        #expect(KeychainStore.parseCredentials(from: missingWrapper) == nil)
+
+        // Wrapper present but accessToken missing
+        let missingToken = try JSONSerialization.data(withJSONObject: [
+            "claudeAiOauth": ["refreshToken": "r"],
+        ])
+        #expect(KeychainStore.parseCredentials(from: missingToken) == nil)
+
+        // Non-JSON bytes
+        #expect(KeychainStore.parseCredentials(from: Data("not json".utf8)) == nil)
+    }
+
     private func rawKeychainPayload(service: String) throws -> Data {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

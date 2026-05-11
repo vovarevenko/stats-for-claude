@@ -33,20 +33,10 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
 
     public func readClaudeCredentials() throws -> ClaudeCredentials {
         let data = try readEnvelopeData()
-        guard
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let oauth = json["claudeAiOauth"] as? [String: Any],
-            let token = oauth["accessToken"] as? String
-        else {
+        guard let creds = Self.parseCredentials(from: data) else {
             throw APIError.tokenNotFound
         }
-        let refreshToken = oauth["refreshToken"] as? String
-        let expiresAt = Self.decodeExpiresAt(oauth["expiresAt"])
-        return ClaudeCredentials(
-            accessToken: token,
-            refreshToken: refreshToken,
-            expiresAt: expiresAt
-        )
+        return creds
     }
 
     public func readClaudeToken() throws -> String {
@@ -63,6 +53,18 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
     public func writeClaudeCredentials(_ credentials: ClaudeCredentials) throws {
         let envelope = try readEnvelopeData()
         let payload = try Self.encodePayload(for: credentials, envelope: envelope)
+        // Defense in depth: before committing to keychain, parse the encoded
+        // payload through the same reader the CLI parsing depends on and
+        // verify the tokens we intended to write actually round-trip. Catches
+        // any regression in `encodePayload` and any future drift in the CLI
+        // envelope schema before it can log the user out of the CLI.
+        guard
+            let verified = Self.parseCredentials(from: payload),
+            verified.accessToken == credentials.accessToken,
+            verified.refreshToken == credentials.refreshToken
+        else {
+            throw APIError.missingEnvelope
+        }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -95,7 +97,7 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
     /// preserving every CLI-only key. Refuses to write a synthesised payload
     /// if the envelope can't be parsed — a bare 3-field write would log the
     /// CLI out on next use.
-    private static func encodePayload(for credentials: ClaudeCredentials, envelope: Data) throws -> Data {
+    static func encodePayload(for credentials: ClaudeCredentials, envelope: Data) throws -> Data {
         guard var json = (try? JSONSerialization.jsonObject(with: envelope)) as? [String: Any] else {
             throw APIError.missingEnvelope
         }
@@ -103,6 +105,24 @@ public final class KeychainStore: KeychainCredentialsAccessing, KeychainTokenRea
         applyTokens(credentials, into: &oauth)
         json["claudeAiOauth"] = oauth
         return try JSONSerialization.data(withJSONObject: json)
+    }
+
+    /// Parses an envelope payload into `ClaudeCredentials`. Shared between
+    /// the read path and the write-back verification step so any change to
+    /// what counts as a valid envelope automatically applies to both.
+    static func parseCredentials(from data: Data) -> ClaudeCredentials? {
+        guard
+            let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+            let oauth = json["claudeAiOauth"] as? [String: Any],
+            let token = oauth["accessToken"] as? String
+        else {
+            return nil
+        }
+        return ClaudeCredentials(
+            accessToken: token,
+            refreshToken: oauth["refreshToken"] as? String,
+            expiresAt: decodeExpiresAt(oauth["expiresAt"])
+        )
     }
 
     private static func applyTokens(_ credentials: ClaudeCredentials, into oauth: inout [String: Any]) {
