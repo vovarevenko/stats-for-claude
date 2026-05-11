@@ -228,40 +228,6 @@
         }
       }
     },
-    "currency" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Currency"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Валюта"
-          }
-        }
-      }
-    },
-    "current_project" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Project"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Проект"
-          }
-        }
-      }
-    },
     "dashboard_title" : {
       "localizations" : {
         "en" : {
@@ -274,23 +240,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stats for Claude"
-          }
-        }
-      }
-    },
-    "error_no_bookmark" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No folder selected. Please choose your ~/.claude folder in Settings."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Папка не выбрана. Выберите ~/.claude в Настройках."
           }
         }
       }
@@ -469,23 +418,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добро пожаловать в Stats for Claude"
-          }
-        }
-      }
-    },
-    "open_dashboard" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Dashboard"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открыть Dashboard"
           }
         }
       }
@@ -684,23 +616,6 @@
         }
       }
     },
-    "resets_at_time" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "resets at %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "сброс в %@"
-          }
-        }
-      }
-    },
     "resets_in" : {
       "localizations" : {
         "en" : {
@@ -729,23 +644,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : " · %@, %@"
-          }
-        }
-      }
-    },
-    "session_duration" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "5 hours"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "5 часов"
           }
         }
       }
@@ -810,23 +708,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Настройки…"
-          }
-        }
-      }
-    },
-    "share" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Share"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Доля"
           }
         }
       }
@@ -923,40 +804,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обновлено %lld мин назад"
-          }
-        }
-      }
-    },
-    "week_cost" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weekly API-equivalent"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API-эквивалент за неделю"
-          }
-        }
-      }
-    },
-    "week_duration" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "7 days"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "7 дней"
           }
         }
       }
