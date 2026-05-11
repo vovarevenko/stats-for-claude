@@ -1,11 +1,10 @@
 .PHONY: gen test lint format clean
 
-# Regenerates StatsForClaude.xcodeproj from project.yml and patches in the
-# Localizable.xcstrings reference. Run after Claude (or anyone) adds new
-# Swift files; normal Cmd+R from Xcode does NOT need this.
+# Regenerates StatsForClaude.xcodeproj from project.yml. Run after Claude
+# (or anyone) adds new Swift files; normal Cmd+R from Xcode does NOT need
+# this.
 gen:
 	xcodegen generate
-	python3 scripts/add_xcstrings.py
 
 # Run the SPM test suite for both kit modules. App-level UI lives outside
 # this scope and has to be exercised through Xcode.

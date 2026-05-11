@@ -33,8 +33,8 @@ targets:
       - path: StatsForClaude
         excludes:
           - Resources
-    resources:
-      - path: StatsForClaude/Resources
+      - path: StatsForClaude/Resources/Localizable.xcstrings
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.revenko.stats-for-claude
@@ -42,6 +42,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: StatsForClaude/Resources/StatsForClaude.entitlements
         ENABLE_APP_SANDBOX: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_EMIT_LOC_STRINGS: YES
     dependencies:
       - package: StatsForClaudeKit
         product: StatsForClaudeKit
@@ -53,7 +54,3 @@ schemes:
     build:
       targets:
         StatsForClaude: all
-      preActions:
-        - name: Patch Localizable.xcstrings
-          script: python3 "${SRCROOT}/scripts/add_xcstrings.py"
-          settingsTarget: StatsForClaude

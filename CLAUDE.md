@@ -87,7 +87,7 @@ data. Reuse this pattern for new screens.
 | Concurrency | Strict (`SWIFT_STRICT_CONCURRENCY: complete`); structured `Task`, `MainActor.run` for re-entry |
 | Logging | `os.Logger` under subsystem `org.revenko.stats-for-claude` |
 | Persistence | Keychain (token cache + Claude Code creds), App Group `UserDefaults` (cached API response, snapshot, settings mirror), security-scoped bookmark |
-| Localization | `Localizable.xcstrings` (en + ru), patched into Xcode project by `scripts/add_xcstrings.py` |
+| Localization | `Localizable.xcstrings` (en + ru); referenced from `project.yml` and `SWIFT_EMIT_LOC_STRINGS=YES` extracts new keys at build time |
 | Parsing | `JSONDecoder.iso8601WithOptionalMillis()` — handles both API (millis) and JSONL (no millis) date strings |
 | Tests | Swift Testing (`@Test`, `#expect`, `#require`) — not XCTest |
 
@@ -107,7 +107,6 @@ such conformance carries a comment justifying it; new ones must too.
 stats-for-claude/
   project.yml                    ← xcodegen source of truth
   Makefile                       ← gen / test / lint / format / clean
-  scripts/add_xcstrings.py       ← post-xcodegen patch for Localizable.xcstrings
   .swiftlint.yml                 ← root config; nested override in Tests/
   .swiftformat
   .github/workflows/ci.yml
@@ -290,8 +289,10 @@ it as its own commit with a migration path and a `BREAKING CHANGE` footer.
 edits: run from Xcode with Cmd+R.
 
 The Xcode project file is generated and committed (xcodegen). The
-`scripts/add_xcstrings.py` post-action injects the localization catalog.
-If the project file looks wrong, regenerate before debugging.
+localization catalog is referenced via an explicit
+`StatsForClaude/Resources/Localizable.xcstrings` entry under `sources:` in
+`project.yml` with `buildPhase: resources`. If the project file looks
+wrong, regenerate before debugging.
 
 ### After Making Changes — What to Rebuild
 
